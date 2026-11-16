@@ -9,7 +9,7 @@ begin
  if exists(select 1 from auth.users) or exists(select 1 from public.profiles) or exists(select 1 from public.exams) then
   raise exception 'Demo initialization requires an empty database';
  end if;
- for item in select * from (values ('admin','admin','admin'),('user','user','visitor')) as v(username,password,account_role) loop
+ for item in select * from (values ('admin','admin','admin'),('user','user','visitor'),('tester','tester','tester')) as v(username,password,account_role) loop
   user_id:=gen_random_uuid();
   login_email:=encode(extensions.digest(item.username,'sha256'),'hex')||'@accounts.mango.invalid';
   insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,recovery_token,email_change_token_new,email_change)

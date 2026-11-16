@@ -1,7 +1,7 @@
 import {authTransport,deadline} from './deadline';
 import {createClient} from '@supabase/supabase-js';
 import {resolveBackendUrl} from '../../shared/backend-url';
-import {captureReadCacheScope,invalidateReadCache,rememberRead,isReadCacheAction} from './read-cache';
+import {captureReadCacheScope,getReadCacheRole,retainMedia,invalidateReadCache,rememberRead,isReadCacheAction} from './read-cache';
 import {ApiError} from './api-error';
 import {acceptIdleDeadline,isIdleExpired,markIdleExpired,sessionId,SESSION_EXPIRED} from './session-idle';
 import {privateMediaUrl} from './media-url';
@@ -11,13 +11,14 @@ export const supabase=createClient(supabaseUrl,import.meta.env.VITE_SUPABASE_PUB
 let sessionRequest:ReturnType<typeof supabase.auth.getSession>|undefined;
 export function readSession(){if(!sessionRequest)sessionRequest=deadline(supabase.auth.getSession().then(result=>{if(result.error)throw result.error;return result;}),12000,'登录状态检查超时，请重试；现有登录信息已保留。').finally(()=>{sessionRequest=undefined;});return sessionRequest;}
 export let serverOffset=0;
-const mutations=new Set(['updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
+const mutations=new Set(['setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
 const inFlight=new Map<string,Promise<any>>();
 const anonymousActions=new Set(['login','register','bootstrap']);
 const downloadActions=new Set(['fileUrl','conversionDownload']);
 const uploadActions=new Set(['upload','renewUpload']);
 export async function api<T=any>(action:string,p:Record<string,any>={},expectedSession?:string):Promise<T>{
- const body=serializeApiRequest(action,p);
+ const testerFile=action==='fileUrl'&&getReadCacheRole()==='tester';
+ const body=serializeApiRequest(testerFile?'testerFile':action,testerFile?{id:p.id}:p);
  const session=anonymousActions.has(action)?null:(await readSession()).data.session;
  const id=sessionId(session);
  if(expectedSession&&expectedSession!==id)throw new ApiError('请重新登录',401);
@@ -33,6 +34,7 @@ export async function api<T=any>(action:string,p:Record<string,any>={},expectedS
   const before=Date.now();
   const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...session?{Authorization:`Bearer ${session.access_token}`}:{ }},body});
   if(response.status===401||response.status===403)invalidateReadCache(session?.user.id);
+  if(testerFile&&response.ok){const data=await response.blob();const mime=response.headers.get('x-mango-file-mime')??'application/octet-stream';const safe=/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm))$/.test(mime)?mime:'application/octet-stream';const signedUrl=retainMedia(cacheScope,URL.createObjectURL(new Blob([data],{type:safe})));return {signedUrl,mime,name:decodeURIComponent(response.headers.get('x-mango-file-name')??'file')} as T;}
   const payload=await response.json().catch(()=>{throw new ApiError(`服务暂不可用（${response.status}），请稍后重试`,response.status);});
   if(payload.server_time)serverOffset=Date.parse(payload.server_time)-(before+Date.now())/2;
   if(id&&response.status===401&&payload.code===SESSION_EXPIRED)markIdleExpired(id);

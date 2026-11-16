@@ -120,6 +120,8 @@ const actions: Record<string, Fields> = {
  updateAvatar: {avatar: optional(avatar), avatar_path: optional(nullable(uuid))},
  purgeAccount: {...id, confirmPermanent: bool, confirmUsername: requiredText(128)},
  userState: {...id, active: bool},
+ setUserRole: {...id, role: enumeration('user','tester'), expectedRole: enumeration('user','tester')},
+ testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,
  createInvite: {label: optional(text(100)), maxUses: optional(integer(1, 10000)), hours: optional(integer(1, 8760)), testOnly: optional(bool)},

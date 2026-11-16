@@ -1,5 +1,7 @@
 # Mango Study · 芒果學社
 
+目前版本：**v01.01.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
 ## 公開示範帳號
@@ -8,10 +10,21 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 | --- | --- | --- |
 | admin | admin | admin |
 | user | user | user |
+| tester | tester | tester |
 
 以上是刻意公開的示範憑證，僅供全新隔離的示範部署，並非原網站帳號。倉庫不含原網站的使用者、密碼雜湊、試卷、答卷、成績、日誌、上傳檔案或備份。
 
-使用可選的 supabase/demo-accounts.sql 建立這兩組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
+使用可選的 supabase/demo-accounts.sql 建立這三組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
+
+## 管理員雙重驗證器
+
+可使用 **Google Authenticator（Google 身份驗證器）**：
+
+- Android：[Google Play 官方下載](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
+- iPhone / iPad：[App Store 官方下載](https://apps.apple.com/app/google-authenticator/id388497605)
+- [本網站綁定與使用教學](docs/admin-mfa.md)
+
+支援不登入 Google 帳號使用；請在本網站綁定基於時間的驗證器，再輸入應用程式顯示的六位數字。
 
 ## 功能
 
@@ -26,7 +39,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
 
-初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。
+初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。tester 為唯讀測試權限，只能查看已發布試卷與共享檔案；不能存取其他人的私人草稿、答卷、成績、帳號資料、頭像或日誌，亦不能上傳或修改內容。admin 可在帳號管理將非 admin 帳號切換為 user/tester，需驗證器確認，切換後目標需重新登入。
 
 ## 自託管與轉換器
 

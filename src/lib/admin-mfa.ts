@@ -1,7 +1,7 @@
 import {api,supabase} from './api';
 import {promptText} from './dialogs';
 
-const sensitiveActions = new Set(['purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
+const sensitiveActions = new Set(['setUserRole','purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
 export type AdminFactor={id:string;name:string};
 export const readAdminFactors=()=>api<AdminFactor[]>('adminMfaFactors');
 

@@ -25,6 +25,7 @@ export function AdminMfa({gate=false,onVerified}:{gate?:boolean;onVerified?:()=>
  }
  return <section className="card settings-security">
   <h2>管理员双重验证</h2>
+  <details><summary>如何使用验证器</summary><ol><li>在手机安装支持 TOTP 的验证器应用。</li><li>点击“绑定验证器”，在应用中添加账号，选择“输入设置密钥”。</li><li>名称填写“芒果学社 admin”，粘贴下方密钥，类型选择“基于时间”。</li><li>把应用生成的六位数字填回网站，点击“验证”。以后重要操作输入应用当前显示的验证码。</li></ol><p>这不是登录密码或短信验证码。请勿向他人发送密钥；验证码不正确时检查手机的自动日期与时间。</p></details>
   {gate&&<p>请先验证身份，再进入网站。</p>}
   {error&&<p role="alert">{error}</p>}
   {!loaded&&<Button onClick={()=>perform(reload)} disabled={busy}>重新读取验证器</Button>}
@@ -36,7 +37,7 @@ export function AdminMfa({gate=false,onVerified}:{gate?:boolean;onVerified?:()=>
    if(error)throw new Error('无法建立验证器，请重试');
    setEnrollment({id:data.id,secret:data.totp.secret});
   })}>绑定验证器</Button>}
-  {enrollment&&<p>在验证器手动添加基于时间的账号，输入密钥 <code>{enrollment.secret}</code>。</p>}
+  {enrollment&&<div><p>将此密钥添加到验证器，类型选择“基于时间”。</p><p><code className="mfa-secret">{enrollment.secret}</code></p><Button type="button" disabled={busy} onClick={()=>perform(async()=>{await navigator.clipboard.writeText(enrollment.secret);})}>复制设置密钥</Button><p>添加后，在下方输入应用生成的六位数字。</p></div>}
   {(enrollment||(gate&&factor))&&<form onSubmit={event=>{
    event.preventDefault();
    if(busy)return;

@@ -1,3 +1,4 @@
+import {roleAllows,testerExamSummary,testerExamView,testerSharedFile} from '../../../shared/roles.ts';
 import {createDeliveryMap,deliveredExam,canonicalAnswers,publicAttempt} from '../../../shared/delivery.ts';
 import {rejectCompromisedPassword,passwordError,authIpLimit} from '../../../shared/password-security.ts';
 import {validateAnswers} from '../../../shared/answers.ts';
@@ -13,8 +14,7 @@ import {validateStructure} from '../../../shared/validation.ts';
 import {validateApiInput} from '../../../shared/api-input.ts';
 import {PublicApiError,databaseError,publicError} from '../../../shared/public-errors.ts';
 import {sanitizeQuestionRichText} from '../../../shared/rich-text.ts';
-import {jwtVerify,createRemoteJWKSet,decodeJwt} from 'jose';
-const githubKeys=createRemoteJWKSet(new URL('https://token.actions.githubusercontent.com/.well-known/jwks'));
+import {decodeJwt} from 'jose';
 const url=Deno.env.get('SUPABASE_URL')!,secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const db=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -28,7 +28,7 @@ async function sessionDeadline(token:string,userId:string,activity:boolean):Prom
  if(typeof end!=='string')fail('请重新登录',401,'SESSION_EXPIRED');
  return end;
 }
-const sensitiveAdminActions=new Set(['purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
+const sensitiveAdminActions=new Set(['setUserRole','purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
 function requiresAdminMfa(role:string,aal:unknown,factors:readonly {factor_type:string;status:string}[]|undefined){
  return role==='admin'&&aal!=='aal2'&&(
   Deno.env.get('MANGO_ADMIN_MFA_REQUIRED')==='true'||
@@ -58,7 +58,11 @@ async function limited(key:string,limit:number,seconds:number){if(!check(await d
 function password(p:string){const error=passwordError(p);if(error)fail(error);}
 function username(n:string){const v=normalizeUsername(String(n??''));if(!/^[\p{L}\p{N}_-]{2,32}$/u.test(v))fail('账号名需为2–32位字母、汉字、数字或下划线');return v;}
 async function mutate(actor:string,action:string,data:any){return check(await db.rpc('api_audited_mutation',{p_actor:actor,p_action:action,p_data:data}));}
-async function fileAllowed(f:any,profile:any){if(f.owner_id===profile.id||f.purpose==='shared'||f.purpose==='avatar')return true;if(f.purpose==='attachment'){if(profile.role==='admin')return true;if(f.exam_id){const e=check(await db.from('exams').select('owner_id').eq('id',f.exam_id).single());if(e.owner_id===profile.id)return true;}return check(await db.rpc('api_attachment_visible',{p_file:f.id,p_user:profile.id}));}return f.purpose==='submission'&&!!f.attempt_id&&profile.role==='admin';}
+async function fileAllowed(f:any,profile:any){if(profile.role==='tester'){
+ if(f.purpose==='shared')return true;if(f.purpose!=='attachment'||!f.exam_id)return false;
+ const e=check(await db.from('exams').select('published_version_id').eq('id',f.exam_id).eq('status','published').is('purged_at',null).maybeSingle());if(!e?.published_version_id)return false;
+ const v=check(await db.from('exam_versions').select('snapshot').eq('id',e.published_version_id).single());return v.snapshot.questions.some((q:any)=>(q.attachments??[]).includes(f.id));
+ }if(f.owner_id===profile.id||f.purpose==='shared'||f.purpose==='avatar')return true;if(f.purpose==='attachment'){if(profile.role==='admin')return true;if(f.exam_id){const e=check(await db.from('exams').select('owner_id').eq('id',f.exam_id).single());if(e.owner_id===profile.id)return true;}return check(await db.rpc('api_attachment_visible',{p_file:f.id,p_user:profile.id}));}return f.purpose==='submission'&&!!f.attempt_id&&profile.role==='admin';}
 async function drainStorageCleanup(){try{const paths=check(await db.rpc('api_storage_cleanup',{})).map((row:any)=>row.path);if(paths.length){check(await db.storage.from('mango-private').remove(paths));check(await db.rpc('api_storage_cleanup',{p_finished:paths}));}}catch{/* Durable queue remains for the next worker poll; do not fail an already committed action. */}}
 function scheduleStorageCleanup(){const pending=drainStorageCleanup();(globalThis as any).EdgeRuntime?.waitUntil(pending);}
 async function removeConversion(job:any,user:string|null=null,cleanup=true){check(await db.rpc('api_remove_conversion',{p_id:job.id,p_user:user}));if(cleanup)scheduleStorageCleanup();}
@@ -115,7 +119,7 @@ Deno.serve(async req=>{
  if(['login','register','bootstrap'].includes(action)){
  await limited('auth:aggregate:'+action,action==='login'?120:action==='register'?45:5,60);
  await limited(`ip:${await sha(ip)}:${action}`,authIpLimit(action),900);
- const name=username(p.username);password(p.password);if(action!=='login')await rejectCompromisedPassword(p.password);
+ const name=username(p.username);if(action!=='login'){password(p.password);await rejectCompromisedPassword(p.password);}
  if(action==='login'){
  await limited(`login:${await sha(name)}`,10,900);
  const client=createClient(url,secret,{auth:{persistSession:false}});
@@ -148,9 +152,10 @@ Deno.serve(async req=>{
  const sessionId=decodeJwt(token).session_id as string;const idleExpiresAt=await sessionDeadline(token,auth.data.user.id,action==='sessionActivity');const me=check(await db.from('profiles').select('*').eq('id',auth.data.user.id).single());if(!me.active)fail('账号已停用',403);
  const mfaRequired=requiresAdminMfa(me.role,decodeJwt(token).aal,auth.data.user.factors);
  if(mfaRequired&&!['me','sessionStatus','sessionActivity','adminMfaFactors'].includes(action))fail('管理员需要完成双重验证',403);
- if(['getExam','attempt','startAttempt','leaderboard','historyQuery','history','files','exams','fileUrl','conversionDownload'].includes(action)){
+ if(['testerExam','testerFile','getExam','attempt','startAttempt','leaderboard','historyQuery','history','files','exams','fileUrl','conversionDownload'].includes(action)){
   await limited('read:'+me.id+':'+action,action==='fileUrl'?120:action==='startAttempt'?12:45,60);
  }
+ if(!roleAllows(me.role,action,p))fail('tester仅可读取已发布试卷与共享档案',403);
  const admin=()=>{if(me.role!=='admin')fail('需要管理员权限',403);};
  if(sensitiveAdminActions.has(action)){admin();await requireFreshAdminFactor(token,me.id,sessionId);}
  if(me.must_change_password&&!['me','changePassword','settings','fileUrl','presence','sessionStatus','sessionActivity'].includes(action))fail('请先修改初始或临时密码',403);
@@ -171,12 +176,18 @@ Deno.serve(async req=>{
  case 'users':{admin();const profiles=check(await db.from('profiles').select('id,username,active,role,created_at,last_login_at,password_changed_at').order('created_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));const presence=check(await db.rpc('api_account_presence',{p_users:profiles.map((u:any)=>u.id)}));data=profiles.map((u:any)=>({...u,...presence.find((s:any)=>s.user_id===u.id)}));break;}
  case 'updateAvatar':{const existing=check(await db.from('profiles').select('avatar').eq('id',me.id).single());const a=p.avatar??existing.avatar;const avatar={color:/^#[0-9a-f]{6}$/i.test(a?.color)?a.color:'#ffbd45',expression:['smile','surprise'].includes(a?.expression)?a.expression:'smile',hat:['none','cap','bow','flower','headphones'].includes(a?.hat)?a.hat:'none',glasses:!!a?.glasses};data=check(await db.rpc('api_update_avatar',{p_user:me.id,p_avatar:avatar,p_photo:p.avatar_path??null}));break;}
  case 'purgeAccount':{admin();if(p.confirmPermanent!==true||typeof p.confirmUsername!=='string')fail('需要永久删除确认');data=check(await db.rpc('api_purge_account',{p_actor:me.id,p_target:p.id,p_username:p.confirmUsername}));scheduleStorageCleanup();break;}
+ case 'setUserRole':{admin();data=check(await db.rpc('api_set_user_role',{p_actor:me.id,p_target:p.id,p_role:p.role,p_expected:p.expectedRole}));break;}
+ case 'testerExam':{const e=check(await db.from('exams').select('id,status,published_version_id').eq('id',p.id).eq('status','published').is('purged_at',null).maybeSingle());if(!e?.published_version_id)fail('试卷未发布',404);const v=check(await db.from('exam_versions').select('snapshot').eq('id',e.published_version_id).single());data=testerExamView({...v.snapshot,id:e.id,status:'published'});break;}
  case 'userState':admin();data=await mutate(me.id,'userState',{id:p.id,active:p.active});break;
  case 'resetPassword':{admin();if(p.id===me.id)fail('请在设置中修改自己的密码');const temp=crypto.randomUUID()+'A7';const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:p.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:true}));check(await db.auth.admin.updateUserById(p.id,{password:temp,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));data={temporaryPassword:temp};break;}
  case 'invites':admin();data=check(await db.from('invites').select('id,label,max_uses,used,expires_at,revoked,created_at').order('created_at',{ascending:false}));break;
  case 'createInvite':{admin();const code=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().slice(0,8);await mutate(me.id,'createInvite',{digest:await sha(code),maxUses:Math.max(1,Math.min(10000,Math.floor(Number(p.maxUses)||1))),hours:Math.max(1,Math.min(8760,Math.floor(Number(p.hours)||24))),label:String(p.label??'').slice(0,100),testOnly:p.testOnly===true});data={code};break;}
  case 'revokeInvite':admin();data=await mutate(me.id,'revokeInvite',{id:p.id});break;
- case 'exams':{let query=db.from('exams').select('id,owner_id,title,description,subject,tags,status,revision,time_limit,repeat_allowed,published_version_id,updated_at,review_reason');if(p.mode==='mine')query=query.eq('owner_id',me.id).neq('status','deleted');else if(p.mode==='admin'){admin();query=query.neq('status','deleted');}else if(p.mode==='trash'){admin();query=query.eq('status','deleted').is('purged_at',null);}else query=query.eq('status','published');if(p.search)query=query.ilike('title',`%${String(p.search).replace(/[%_]/g,'')}%`);data=check(await query.order('updated_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));break;}
+ case 'exams':{if(me.role==='tester'){
+ let q=db.from('exams').select('id,published_version_id,version:exam_versions!exams_published_version_id_fkey!inner(snapshot)').eq('status','published').is('purged_at',null);
+ if(p.search)q=q.ilike('version.snapshot->>title',`%${String(p.search).replace(/[%_]/g,'')}%`);
+ data=check(await q.order('updated_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49)).map((e:any)=>testerExamSummary({...e.version.snapshot,id:e.id,published_version_id:e.published_version_id,status:'published'}));break;
+ }let query=db.from('exams').select('id,owner_id,title,description,subject,tags,status,revision,time_limit,repeat_allowed,published_version_id,updated_at,review_reason');if(p.mode==='mine')query=query.eq('owner_id',me.id).neq('status','deleted');else if(p.mode==='admin'){admin();query=query.neq('status','deleted');}else if(p.mode==='trash'){admin();query=query.eq('status','deleted').is('purged_at',null);}else query=query.eq('status','published');if(p.search)query=query.ilike('title',`%${String(p.search).replace(/[%_]/g,'')}%`);data=check(await query.order('updated_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));if(me.role==='tester')data=data.map(testerExamSummary);break;}
  case 'createExam':{if(!String(p.title??'').trim())fail('请输入试卷名称');data=check(await db.from('exams').insert({owner_id:me.id,title:String(p.title).trim().slice(0,200)}).select().single());break;}
  case 'getExam':{const e=check(await db.from('exams').select('*').eq('id',p.id).single());if(e.owner_id!==me.id&&me.role!=='admin')fail('无权限',403);if(e.purged_at)fail('试卷已永久移出回收站',410);data=e;break;}
  case 'saveExam':{const structureErrors=validateStructure(p.exam);if(structureErrors.length)fail(structureErrors.join('；'));if(!Array.isArray(p.exam?.questions)||p.exam.questions.length>2000)fail('题目数据无效或超过2000题');p.exam={...p.exam,questions:p.exam.questions.map(sanitizeQuestionRichText)};if(JSON.stringify(p.exam).length>1_500_000)fail('试卷过大');await validateAttachments(p.exam,me);p.exam={...p.exam,questions:bindDrawingQuestions(p.exam.questions,me.id)};data=check(await db.rpc('api_save_exam',{p_id:p.exam.id,p_actor:me.id,p_revision:p.exam.revision,p_data:p.exam}));break;}
@@ -195,7 +206,12 @@ Deno.serve(async req=>{
  case 'upload':{if(!extensions.includes(String(p.name??'').split('.').pop()?.toLowerCase()??''))fail('不支持此文件类型');const purpose=p.purpose;if(!['shared','attachment','submission','avatar','conversion'].includes(purpose))fail('用途无效');if(purpose==='shared')admin();if(!Number.isSafeInteger(p.size)||p.size<1)fail('文件大小无效或文件为空');if(purpose!=='attachment'&&p.exam_id)fail('此文件用途不能绑定试卷');if(purpose!=='submission'&&p.attempt_id)fail('此文件用途不能绑定答卷');if(purpose==='attachment'&&!p.exam_id)fail('附件需要绑定试卷');if(purpose==='submission'&&!p.attempt_id)fail('文件提交需要正式答卷');if(p.exam_id){const e=check(await db.from('exams').select('owner_id').eq('id',p.exam_id).single());if(e.owner_id!==me.id&&me.role!=='admin')fail('无权限',403);}if(p.attempt_id){const a=check(await db.from('attempts').select('user_id,submitted_at').eq('id',p.attempt_id).single());if(a.user_id!==me.id||a.submitted_at)fail('无权限',403);}const name=String(p.name).replace(/[\\/\x00-\x1f]/g,'_').slice(0,200),path=`${me.id}/${crypto.randomUUID()}/${name}`;const ticket=check(await db.storage.from('mango-private').createSignedUploadUrl(path));const row=check(await db.rpc('api_reserve_upload',{p_user:me.id,p_purpose:purpose,p_name:name,p_size:p.size,p_mime:String(p.mime),p_path:path,p_exam:p.exam_id??null,p_attempt:p.attempt_id??null}));data={file:row,...ticket};break;}
  case 'renewUpload':{const f=check(await db.from('files').select('*').eq('id',p.id).eq('owner_id',me.id).eq('verified',false).maybeSingle());if(!f||Date.parse(f.created_at)<=Date.now()-86400000)fail('上传预约已失效或无权限',404);if(f.purpose==='shared')admin();if(f.purpose==='submission'){const a=check(await db.from('attempts').select('submitted_at').eq('id',f.attempt_id).eq('user_id',me.id).single());if(a.submitted_at)fail('答卷已提交，不能继续上传',403);}data={file:f,...check(await db.storage.from('mango-private').createSignedUploadUrl(f.path))};break;}
  case 'verifyUpload':{const f=check(await db.from('files').select('*').eq('id',p.id).eq('owner_id',me.id).single());if(!f.verified&&Date.parse(f.created_at)<=Date.now()-86400000)fail('上传预约已失效',409);if(await storedSize(f.path)!==Number(f.size))fail('文件大小不匹配');const bytes=await storedHeader(f.path);const inspected=inspectFile(f.name,bytes);if(f.purpose==='avatar'&&!['image/png','image/jpeg','image/gif','image/webp'].includes(inspected.mime))fail('头像只支持PNG/JPEG/GIF/WEBP');check(await db.from('files').update({verified:true,mime:inspected.mime}).eq('id',f.id));data={ok:true,file:{...f,verified:true,mime:inspected.mime}};break;}
- case 'files':{let q=db.from('files').select('*').eq('verified',true).eq('purpose',p.purpose??'shared');if(p.purpose&&p.purpose!=='shared')q=q.eq('owner_id',me.id);if(p.search)q=q.ilike('name',`%${String(p.search).replace(/[%_]/g,'')}%`);if(p.category)q=q.eq('category',String(p.category).slice(0,100));const sort=['name','size','created_at'].includes(p.sort)?p.sort:'created_at';const offset=Math.max(0,Math.min(1000000,Math.floor(Number(p.offset)||0)));data=check(await q.order(sort,{ascending:p.ascending===true}).order('id').range(offset,offset+49));break;}
+ case 'files':{let q=db.from('files').select('*').eq('verified',true).eq('purpose',p.purpose??'shared');if(p.purpose&&p.purpose!=='shared')q=q.eq('owner_id',me.id);if(p.search)q=q.ilike('name',`%${String(p.search).replace(/[%_]/g,'')}%`);if(p.category)q=q.eq('category',String(p.category).slice(0,100));const sort=['name','size','created_at'].includes(p.sort)?p.sort:'created_at';const offset=Math.max(0,Math.min(1000000,Math.floor(Number(p.offset)||0)));data=check(await q.order(sort,{ascending:p.ascending===true}).order('id').range(offset,offset+49));if(me.role==='tester')data=data.map(testerSharedFile);break;}
+ case 'testerFile':{
+ if(me.role!=='tester')fail('无权限',403);const f=check(await db.from('files').select('*').eq('id',p.id).eq('verified',true).maybeSingle());if(!f||!await fileAllowed(f,me))fail('无权限',403);
+ const signed=check(await db.storage.from('mango-private').createSignedUrl(f.path,30));const response=await fetch(signed.signedUrl,{signal:AbortSignal.timeout(30000)});if(!response.ok)fail('文件暂时无法读取',502);
+ return new Response(response.body,{headers:{...headers,'Content-Type':'application/octet-stream','Content-Disposition':'attachment','Content-Security-Policy':"default-src 'none'; sandbox",'X-Mango-File-Mime':f.mime,'X-Mango-File-Name':encodeURIComponent(f.name)}});
+ }
  case 'fileUrl':{const f=check(await db.from('files').select('*').eq('id',p.id).eq('verified',true).single());if(!await fileAllowed(f,me))fail('无权限',403);data={...check(await db.storage.from('mango-private').createSignedUrl(f.path,60,{download:p.download||f.mime==='text/html'?f.name:false})),mime:f.mime,name:f.name};break;}
  case 'updateFile':{admin();check(await db.rpc('api_update_shared_file',{p_id:p.id,p_actor:me.id,p_name:String(p.name??'').slice(0,200),p_description:String(p.description??'').slice(0,2000),p_category:String(p.category??'').slice(0,100)}));data={ok:true};break;}
  case 'replaceShared':{admin();const old=check(await db.from('files').select('*').eq('id',p.id).eq('purpose','shared').single()),next=check(await db.from('files').select('*').eq('id',p.new_id).eq('purpose','shared').eq('verified',true).single());if(old.id===next.id)fail('请选择新文件');check(await db.rpc('api_delete_file',{p_id:old.id,p_actor:me.id,p_replace:next.id}));scheduleStorageCleanup();data={ok:true};break;}

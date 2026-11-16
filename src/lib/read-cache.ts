@@ -7,8 +7,12 @@ export const isReadCacheAction=(action:string)=>cacheable.has(action);
 type Entry={value:unknown;expires:number;bytes:number};
 export type ReadCacheScope={readonly accountId:string;readonly generation:number};
 const entries=new Map<string,Entry>();
+const mediaUrls=new Set<string>();
+let accessRole:string|undefined;
 let account:string|undefined,generation=0,totalBytes=0;
 export const getReadCacheAccount=()=>account;
+export const getReadCacheRole=()=>accessRole;
+export function retainMedia(scope:ReadCacheScope|undefined,url:string){if(!scope||scope.accountId!==account||scope.generation!==generation){URL.revokeObjectURL(url);throw new Error("账号已切换，请重新读取");}mediaUrls.add(url);setTimeout(()=>{mediaUrls.delete(url);URL.revokeObjectURL(url);},300000);return url;}
 
 function canonical(value:unknown):unknown{
  if(Array.isArray(value))return value.map(canonical);
@@ -20,11 +24,12 @@ function key(action:string,params:Record<string,unknown>){
  return JSON.stringify([account,action,canonical(JSON.parse(JSON.stringify(params)))]);
 }
 function remove(name:string){const entry=entries.get(name);if(entry){totalBytes-=entry.bytes;entries.delete(name);}}
-function clear(){entries.clear();totalBytes=0;generation++;}
+function clear(){for(const url of mediaUrls)URL.revokeObjectURL(url);mediaUrls.clear();entries.clear();totalBytes=0;generation++;}
 
 /** Call only after the normal server-verified profile has selected the active account. */
-export function setReadCacheAccount(accountId?:string){
- if(accountId&&accountId===account)return;
+export function setReadCacheAccount(accountId?:string,role?:string){
+ if(accountId&&accountId===account&&role===accessRole)return;
+ accessRole=role;
  account=accountId;clear();
 }
 export function captureReadCacheScope(accountId?:string):ReadCacheScope|undefined{
