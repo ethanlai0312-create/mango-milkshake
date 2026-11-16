@@ -1,12 +1,14 @@
 /** Database roles are authoritative. `visitor` is the existing storage value for user. */
 export const roleLabel=(role:string)=>role==='admin'?'admin':role==='tester'?'tester':'user';
-const testerActions=new Set(['me','sessionStatus','sessionActivity','presence','changePassword','exams','testerExam','files','testerFile']);
+export const testerPreviewPages=new Set(['review','users','invites','grading','trash','logs','config']);
+const testerActions=new Set(['me','sessionStatus','sessionActivity','presence','changePassword','settings','updateAvatar','exams','testerExam','files','testerFile','getExam','createExam','saveExam','submitReview','deleteExam','copyExam','startAttempt','attempt','saveAttempt','submitAttempt','history','historyQuery','leaderboard','upload','renewUpload','verifyUpload','deleteFile','conversionInfo','conversionInputs','wakeConverter','conversions','createConversion','deleteConversion','cancelConversion','conversionDownload']);
 export function roleAllows(role:string,action:string,params:Record<string,unknown>={}){
  if(!['admin','visitor','tester'].includes(role))return false;
  if(role!=='tester')return true;
  if(!testerActions.has(action))return false;
- if(action==='exams'&&params.mode!==undefined&&params.mode!=='public')return false;
- if(action==='files'&&params.purpose!==undefined&&params.purpose!=='shared')return false;
+ if(action==='exams'&&['admin','trash'].includes(String(params.mode)))return false;
+ if(['history','historyQuery'].includes(action)&&params.all===true)return false;
+ if(action==='upload'&&params.purpose==='shared')return false;
  return true;
 }
 const fields=(value:any,keys:string[])=>Object.fromEntries(keys.filter(key=>Object.hasOwn(value,key)).map(key=>[key,structuredClone(value[key])]));

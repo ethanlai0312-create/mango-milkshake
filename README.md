@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v01.01.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v01.02.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -39,7 +39,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
 
-初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。tester 為唯讀測試權限，只能查看已發布試卷與共享檔案；不能存取其他人的私人草稿、答卷、成績、帳號資料、頭像或日誌，亦不能上傳或修改內容。admin 可在帳號管理將非 admin 帳號切換為 user/tester，需驗證器確認，切換後目標需重新登入。
+初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。tester 繼承 user 的個人功能，可測試自己的出題、答題、頭像與私人文件；額外提供使用示例資料的管理頁面測試入口。禁止存取他人私人資料及執行管理操作；排行榜只顯示自己的實際記錄。詳見 [權限說明](docs/permissions.md)。admin 可在帳號管理將非 admin 帳號切換為 user/tester，需驗證器確認，切換後目標需重新登入。
 
 ## 自託管與轉換器
 

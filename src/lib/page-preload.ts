@@ -1,5 +1,6 @@
 import {api} from './api';
-import {peekRead,captureReadCacheScope,getReadCacheAccount} from './read-cache';
+import {peekRead,captureReadCacheScope,getReadCacheAccount,getReadCacheRole} from './read-cache';
+import {testerPreviewPages} from '../../shared/roles';
 import {preloadedModule} from '../../shared/preloaded-module';
 
 export const pageModules={
@@ -19,6 +20,7 @@ function readFor(page:string):[string,Record<string,unknown>][] {
 }
 /** Intent/idle warming only; normal page requests remain authoritative. */
 export function prefetchPage(page:string){
+ if(getReadCacheRole()==='tester'&&testerPreviewPages.has(page))return;
  const resource=pageModules[codeFor(page) as keyof typeof pageModules];
  if(resource)void resource.load().catch(()=>{});
  for(const [action,params] of readFor(page)){
