@@ -1,0 +1,3 @@
+create function public.api_claim_conversion() returns public.conversion_jobs language plpgsql set search_path='' as $$declare j public.conversion_jobs;begin select * into j from public.conversion_jobs where status='queued' and expires_at>now() order by created_at for update skip locked limit 1;if j.id is null then return null;end if;update public.conversion_jobs set status='running',lease_id=gen_random_uuid(),lease_until=now()+interval '15 minutes',output_path=user_id::text||'/converted/'||id::text||'.'||case when target='png' then 'zip' else target end where id=j.id returning * into j;return j;end$$;
+revoke all on function public.api_claim_conversion() from public,anon,authenticated;
+grant execute on function public.api_claim_conversion() to service_role;

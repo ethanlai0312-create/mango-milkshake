@@ -1,0 +1,7 @@
+/* One bounded artboard keeps the fruit, decorations and identity mark together. */
+.mango-avatar.mango-avatar--admin,.mango-avatar.mango-avatar--guest{isolation:isolate;line-height:0;overflow:visible}
+.mango-avatar.mango-avatar--admin>svg.mango-avatar-art,.mango-avatar.mango-avatar--guest>svg.mango-avatar-art{display:block;width:100%!important;height:100%!important;flex:none;overflow:visible}
+.mango-avatar.mango-avatar--admin>img.mango-photo,.mango-avatar.mango-avatar--guest>img.mango-photo{display:block;object-fit:cover;border-radius:50%;width:100%!important;height:100%!important}
+.mango-avatar.mango-avatar--admin>img.mango-photo{position:absolute;left:10%;top:17.5%;width:80%!important;height:80%!important}
+.mango-avatar.mango-avatar--admin>svg.mango-crown-overlay{position:absolute;inset:0;pointer-events:none}
+.mango-crown{pointer-events:none}

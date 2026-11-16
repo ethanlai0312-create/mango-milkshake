@@ -1,0 +1,42 @@
+/* One stable shell; only the content changes. No filters, glass, or global transforms. */
+.page-surface.route-stage{position:relative;isolation:isolate;animation:none;min-width:0}
+.route-content{position:relative;min-width:0;z-index:2}
+.route-content:focus{outline:none}
+.route-outgoing{position:fixed;pointer-events:none!important;user-select:none;z-index:1;overflow:hidden;contain:paint}
+.route-snapshot-content{position:relative;min-width:0}
+.route-outgoing *{pointer-events:none!important;animation:none!important;transition:none!important}
+.route-outgoing .ui-dialog,.route-outgoing .feedback{display:none}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-preference=full]) .route-content{transform:none!important}}
+.route-stage>.route-content.route-fallback{animation:route-reveal var(--route-duration,280ms) var(--ease-out) both!important}
+@keyframes route-reveal{from{opacity:var(--route-from-opacity,.2);transform:var(--route-from-transform,translateY(8px))}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-preference=full]) .route-stage>.route-content.route-fallback{animation-duration:180ms!important}}
+@media(max-height:540px) and (pointer:coarse){
+ :root{--header-height:60px}main{padding-top:20px}.page-heading{margin-bottom:20px}
+ .settings-grid{grid-template-columns:1fr}.ui-dialog{max-height:calc(100dvh - 24px);margin-block:auto;padding:20px}
+ .auth-page{min-height:100dvh}.auth-intro{padding-block:24px}.auth-form{padding-block:24px}
+}
+@media(min-width:600px) and (max-height:540px) and (pointer:coarse){.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(forced-colors:active){.route-outgoing{display:none}}
+.data-region{min-block-size:160px}
+.document-frame-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.document-frame-body{min-block-size:340px}
+@media(max-width:1000px){.document-frame-grid{grid-template-columns:minmax(0,1fr)}}
+.responsive-records td>input[type=checkbox]{width:24px;min-width:24px;height:24px;min-height:24px;margin-right:10px;vertical-align:middle}
+.route-content .card+.search{margin-top:20px}
+.route-content .search+button{margin-left:12px;margin-bottom:20px}
+@media(max-width:800px), (max-height:540px) and (pointer:coarse){
+ .card table.responsive-records{display:block;min-width:0;width:100%}
+ .responsive-records thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .responsive-records tbody{display:block}
+ .responsive-records tbody tr{display:block;padding:16px 0;border-bottom:1px solid var(--line)}
+ .responsive-records tbody tr:first-child{padding-top:0}.responsive-records tbody tr:last-child{padding-bottom:0;border-bottom:0}
+ .responsive-records tbody td{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px;border:0;padding:5px 0;min-width:0}
+ .responsive-records td::before{content:attr(data-label);color:var(--ink-secondary);font-size:var(--text-xs);padding-top:2px}
+ .responsive-records td:first-child,.responsive-records td[data-label="操作"]{display:block}
+ .responsive-records td:first-child::before,.responsive-records td[data-label="操作"]::before{display:none}
+ .responsive-records td small{grid-column:2;min-width:0}
+ .responsive-records td:first-child small{display:block;margin:6px 0}
+ .responsive-records td[data-label="操作"] .actions{gap:8px;margin-top:8px}
+ .responsive-records td[data-label="操作"] button{min-height:44px}
+}
+.route-content :is(h1,h2)[tabindex="-1"]:focus{outline:none}

@@ -1,0 +1,27 @@
+/* One opaque surface connects the rail and its moving name region. */
+.nav-surface-layer{position:fixed;inset:0;pointer-events:none;z-index:var(--z-rail)}
+.nav-surface-contour{position:absolute;inset:0 auto 0 0;overflow:visible;pointer-events:none;max-width:100vw}
+.nav-surface-measure{position:absolute;visibility:hidden;white-space:nowrap;font-size:var(--text-sm);font-weight:500}
+.nav-surface-hit{position:absolute;top:0;left:0;height:44px;opacity:0;pointer-events:none;will-change:transform;isolation:isolate}
+.nav-surface-hit>.rail-item,.nav-surface-hit .rail-trigger{width:100%;height:44px;max-width:none}
+.nav-surface-hit .rail-trigger{padding:0;border-radius:10px;background:transparent!important;color:var(--ink);touch-action:none}
+.nav-surface-hit .rail-label{display:none!important}
+.nav-surface-hit .rail-trigger:active{background:var(--blue-tint)!important;transform:scale(.985)}
+.nav-surface-names{position:absolute;inset:0;display:grid;align-items:center;padding-left:6px;padding-right:12px;pointer-events:none;overflow:hidden;white-space:nowrap;font-size:var(--text-sm);font-weight:500;color:var(--ink)}
+.nav-surface-names>span{grid-area:1/1;overflow:hidden;text-overflow:ellipsis}
+.nav-surface-current{animation:nav-name-in 120ms var(--ease-out) both}
+.nav-surface-previous{animation:nav-name-out 100ms ease-out both}
+.sidebar .rail-trigger:active{transform:none;background:var(--blue-tint)}
+@keyframes nav-name-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes nav-name-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-3px)}}
+@media(min-width:801px){
+ .app-shell .sidebar{z-index:calc(var(--z-rail) + 1)}
+ .app-shell .sidebar::before{background:transparent;border-right:0}
+ .sidebar .rail-label{display:none}
+ .sidebar .rail-item.expanded .rail-trigger{background:transparent;border-radius:11px;color:var(--ink)}
+ .sidebar .rail-item.expanded .rail-trigger.active{background:var(--blue-tint);color:var(--blue)}
+ .sidebar .rail-trigger:hover{background:var(--surface-alt)}
+}
+@media(max-width:800px),(max-height:540px) and (pointer:coarse){.nav-surface-layer{display:none}.sidebar .rail-label{display:block}.app-shell .sidebar{z-index:var(--z-drawer)}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-preference="full"]) .nav-surface-current,:root:not([data-motion-preference="full"]) .nav-surface-previous{animation:none}:root:not([data-motion-preference="full"]) .nav-surface-previous{display:none}:root:not([data-motion-preference="full"]) .nav-surface-hit{will-change:auto}}
+:root[data-motion-preference="reduced"] .nav-surface-current,:root[data-motion-preference="reduced"] .nav-surface-previous{animation:none}:root[data-motion-preference="reduced"] .nav-surface-previous{display:none}:root[data-motion-preference="reduced"] .nav-surface-hit{will-change:auto}

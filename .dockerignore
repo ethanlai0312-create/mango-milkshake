@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+.env*
+test-results
+playwright-report
+work
+outputs
+.secrets
+**/__pycache__
+**/*.pyc
+**/*.log

@@ -1,0 +1,13 @@
+create index registrations_invite_idx on private.registrations(invite_id);
+create index attempts_exam_idx on public.attempts(exam_id);
+create index audit_actor_idx on public.audit_logs(actor_id,created_at desc);
+create index conversion_input_idx on public.conversion_jobs(input_file_id);
+create index conversion_user_idx on public.conversion_jobs(user_id,created_at desc);
+create index exams_deleted_by_idx on public.exams(deleted_by);
+create index exams_published_version_idx on public.exams(published_version_id);
+create index files_attempt_idx on public.files(attempt_id);
+create index files_exam_idx on public.files(exam_id);
+create index invites_creator_idx on public.invites(created_by);
+create index reviews_actor_idx on public.reviews(actor_id);
+create index reviews_exam_idx on public.reviews(exam_id,created_at desc);
+alter table private.bootstrap add primary key(token_hash);

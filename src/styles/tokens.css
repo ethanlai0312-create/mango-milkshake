@@ -1,0 +1,33 @@
+/* Mango interface tokens. Opaque surfaces; no external fonts or glass materials. */
+:root {
+ color-scheme:light;
+ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","PingFang TC","Microsoft YaHei",sans-serif;
+ font-size:16px;font-synthesis:none;
+ --page:#f5f5f7;--surface:#fff;--surface-alt:#f0f1f4;--surface-hover:#f7f8fa;
+ --ink:#1d1d1f;--ink-secondary:#62636b;--ink-disabled:#767780;
+ --line:#dcdde3;--line-strong:#858994;
+ --blue:#0067d5;--blue-hover:#005aba;--blue-tint:#e9f2ff;--on-blue:#fff;
+ --red:#b42332;--red-tint:#fff0f1;--green:#24714b;--green-tint:#edf7f1;
+ --amber:#805b13;--amber-tint:#faf4e5;--gold:#80601c;
+ --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+ --text-xs:.75rem;--text-sm:.8125rem;--text-body:.9375rem;--text-lg:1.125rem;--text-title:clamp(1.6rem,2.2vw,2rem);
+ --weight-medium:500;--weight-heading:600;--line-body:1.65;
+ --radius-control:10px;--radius-card:18px;--radius-dialog:20px;
+ --shadow-popover:0 4px 18px #20253012;--shadow-dialog:0 20px 70px #00000024;
+ --duration-press:100ms;--duration-control:140ms;--duration-menu:180ms;--duration-page:200ms;--duration-dialog:220ms;
+ --ease-out:cubic-bezier(.2,.7,.2,1);--ease-in:cubic-bezier(.4,0,1,1);
+ --z-header:20;--z-rail:30;--z-scrim:40;--z-drawer:50;--z-tooltip:60;--z-feedback:80;
+ --rail-width:76px;--header-height:72px;--control-height:44px;
+ /* Compatibility aliases for authored question components. */
+ --bg:var(--page);--card:var(--surface);--text:var(--ink);--muted:var(--ink-secondary);--border:var(--line);--accent:var(--blue);--soft:var(--blue-tint);--input:var(--surface);--danger:var(--red);--ease:var(--ease-out);--shadow:var(--shadow-popover);
+}
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --page:#17181b;--surface:#222327;--surface-alt:#2b2d32;--surface-hover:#2a2b30;
+ --ink:#f4f4f6;--ink-secondary:#b1b2bb;--ink-disabled:#9c9da6;
+ --line:#3e414a;--line-strong:#8a8e9a;
+ --blue:#9ac5ff;--blue-hover:#b9d7ff;--blue-tint:#24364f;--on-blue:#11233d;
+ --red:#ffb2b8;--red-tint:#3e252c;--green:#8fd4ad;--green-tint:#243a30;
+ --amber:#e3c481;--amber-tint:#3c3426;--gold:#d0b16c;
+ --shadow-popover:0 4px 18px #0003;--shadow-dialog:0 20px 70px #0007;
+}

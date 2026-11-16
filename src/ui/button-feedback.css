@@ -1,0 +1,17 @@
+/* Paint feedback inside the fixed hit target. Content/grid semantics stay intact. */
+.ui-button{isolation:isolate;--press-tint:currentColor;user-select:none;-webkit-user-select:none}
+.ui-button:not(:disabled):active,.ui-button[data-press-phase=down],.ui-button[data-press-phase=held]{transform:none}
+.ui-button>.button-feedback{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;opacity:0;background:var(--press-tint);box-shadow:inset 0 0 0 1px currentColor;transform:scale(.99);transition:opacity 110ms var(--ease-out),transform 130ms var(--ease-out)}
+.ui-button[data-press-phase=down]>.button-feedback{opacity:.085;transform:scale(1)}
+.ui-button[data-press-phase=held]>.button-feedback{opacity:.16;transform:scale(1);box-shadow:inset 0 0 0 2px currentColor}
+.ui-button[data-press-phase=released]>.button-feedback{opacity:.035;transform:scale(1)}
+.ui-button[data-feedback=success]{box-shadow:inset 0 0 0 1px var(--green)}
+.ui-button[data-feedback=error]{box-shadow:inset 0 0 0 1px var(--red)}
+.ui-button[aria-busy=true]>.button-feedback,.ui-button:disabled>.button-feedback,.ui-button.nav-scrim>.button-feedback{opacity:0;box-shadow:none}
+.ui-button[aria-busy=true]{cursor:progress}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-preference="full"]) .ui-button>.button-feedback{transition:none;transform:none}}
+:root[data-motion-preference="reduced"] .ui-button>.button-feedback{transition:none;transform:none}
+@media(forced-colors:active){
+ .ui-button[data-press-phase=down],.ui-button[data-press-phase=held]{outline:2px solid Highlight;outline-offset:1px}
+ .ui-button>.button-feedback{display:none}
+}

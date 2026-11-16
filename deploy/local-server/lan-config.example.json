@@ -1,0 +1,10 @@
+{
+  "dist": "C:/PATH/TO/mango-study/dist",
+  "hosts": [
+    "localhost",
+    "127.0.0.1"
+  ],
+  "remotePrefix": "127.0.0.",
+  "httpPort": 5178,
+  "upstreamOrigin": "http://127.0.0.1:15800"
+}

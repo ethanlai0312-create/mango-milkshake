@@ -1,0 +1,12 @@
+FROM python:3.12-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress poppler-utils fonts-noto-cjk fonts-liberation ca-certificates libseccomp2 procps && rm -rf /var/lib/apt/lists/*
+COPY services/converter/install_pandoc.py /tmp/install_pandoc.py
+RUN python /tmp/install_pandoc.py && rm /tmp/install_pandoc.py
+COPY docs/licenses/pandoc-3.12.1-COPYING.md /usr/local/share/doc/pandoc/COPYING.md
+RUN pip install --no-cache-dir pypdfium2==5.14.0 pdfplumber==0.11.10 pypdf==6.21.4 python-docx==1.2.0 reportlab==4.4.7 markdown==3.10 openpyxl==3.1.5
+RUN mkdir -p /app /work/jobs && chmod 755 /app /work /work/jobs
+COPY services/converter/convert.py services/converter/pdf_tools.py services/converter/sandbox.py services/converter/sandbox_runner.py services/converter/reap.py services/converter/server.py services/converter/selftest.py /app/
+RUN chmod -R a-w /app && chmod 400 /app/server.py /app/sandbox.py /app/sandbox_runner.py /app/reap.py /app/selftest.py
+WORKDIR /app
+EXPOSE 10000
+CMD ["python","-u","/app/server.py"]

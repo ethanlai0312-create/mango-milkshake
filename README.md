@@ -1,2 +1,39 @@
-# mango-milkshake
-芒果学社网站
+# Mango Study · 芒果學社
+
+React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
+
+## 公開示範帳號
+
+| 權限 | 帳號 | 密碼 |
+| --- | --- | --- |
+| admin | admin | admin |
+| user | user | user |
+
+以上是刻意公開的示範憑證，僅供全新隔離的示範部署，並非原網站帳號。倉庫不含原網站的使用者、密碼雜湊、試卷、答卷、成績、日誌、上傳檔案或備份。
+
+使用可選的 supabase/demo-accounts.sql 建立這兩組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
+
+## 功能
+
+試卷建立、編輯、JSON/CSV 匯入匯出、預覽、審核、版本與回收站；多種題型、計時、自動保存、本機草稿、評分及人工批改；幾何工具、初始圖形、參考作圖和步驟回放；頭像、設定、排行榜和在線狀態；共享檔案、續傳及私人文件轉換；帳號管理、註冊密令、操作日誌、管理員雙重驗證；響應式介面、鍵盤操作、減少動態效果及離線快取。
+
+## 前端啟動
+
+1. 安裝 Node.js 24 與 pnpm 11.25。
+2. 執行 pnpm install --frozen-lockfile。
+3. 複製 .env.example 為 .env.local，填入自己的後端 URL 與公開客戶端金鑰。管理金鑰不可放入前端。
+4. 執行 pnpm dev；pnpm typecheck 檢查型別；pnpm build 建置正式靜態檔案。
+
+登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
+
+初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。
+
+## 自託管與轉換器
+
+部署者可使用 deploy/local-server 的入口、瀏覽器策略、流量預算和上傳授權模組。複製 lan-config.example.json 為本機 lan-config.json，調整路徑、允許主機及後端入口後執行 node deploy/local-server/lan-gateway.mjs。入口保留 Windows/WSL 磁碟檢查，其他平台需調整該檢查；study.example.com 是範例域名。憑證、通道與私人設定自行配置。
+
+services/converter 包含轉換器及隔離程式。由專案根目錄以 services/converter/Dockerfile.service 建置服務，自行設定 MANGO_API 為 HTTPS API 位址和私人的 MANGO_WORKER_TOKEN。shared/password-security.ts 同時提供外洩密碼服務檢查及本機政策；完全離線部署需自行整合本機 adapter。本倉庫不帶原環境的私人部署 adapter。
+
+## 發布邊界
+
+只發布功能程式碼、資料庫結構、設定範本、授權與文件。未帶入原 Git 開發歷史、環境檔、測試資料、執行紀錄、帳號、試卷、答卷、排行榜資料、上傳內容、資料庫備份、TLS 私鑰或通道憑證。除上方明確公開的示範憑證外，勿提交實際帳號、金鑰或業務內容。
