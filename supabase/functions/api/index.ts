@@ -155,7 +155,7 @@ Deno.serve(async req=>{
  if(['testerExam','testerFile','getExam','attempt','startAttempt','leaderboard','historyQuery','history','files','exams','fileUrl','conversionDownload'].includes(action)){
   await limited('read:'+me.id+':'+action,action==='fileUrl'?120:action==='startAttempt'?12:45,60);
  }
- if(!roleAllows(me.role,action,p))fail('tester仅可读取已发布试卷与共享档案',403);
+ if(!roleAllows(me.role,action,p))fail('tester不能读取管理资料或执行管理操作；个人功能仍可正常使用',403);
  const admin=()=>{if(me.role!=='admin')fail('需要管理员权限',403);};
  if(sensitiveAdminActions.has(action)){admin();await requireFreshAdminFactor(token,me.id,sessionId);}
  if(me.must_change_password&&!['me','changePassword','settings','fileUrl','presence','sessionStatus','sessionActivity'].includes(action))fail('请先修改初始或临时密码',403);
