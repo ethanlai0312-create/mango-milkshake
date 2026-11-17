@@ -1,3 +1,4 @@
+import {inviteLabelError} from './invite-label.ts';
 import {validPresenceId as uuid} from './presence.ts';
 
 type Rule = (input: unknown) => boolean;
@@ -125,7 +126,7 @@ const actions: Record<string, Fields> = {
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,
- createInvite: {loginId: requiredText(128), label: optional(text(100)), hours: optional(integer(1, 8760)), testOnly: optional(bool)},
+ createInvite: {loginId: requiredText(128), label: value=>!inviteLabelError(value), hours: optional(integer(1, 8760)), testOnly: optional(bool)},
  revokeInvite: id,
  exams: {mode: optional(enumeration('mine', 'admin', 'trash', 'public')), search, offset},
  createExam: {title: requiredText(200)},

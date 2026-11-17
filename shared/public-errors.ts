@@ -85,6 +85,7 @@ export function databaseError(error:{code?:string;message?:string}):PublicApiErr
   case '23503':return new PublicApiError('记录仍有关联数据，不能执行此操作',409);
   case 'PGRST116':return new PublicApiError('记录不存在或状态已变化，请刷新后重试',404);
   case '40001':case '40P01':case '55P03':return new PublicApiError('CONFLICT:数据正在更新，请稍后重试',409);
+  case '22023':return new PublicApiError('输入参数不符合要求',400);
   case '42501':return new PublicApiError('无权限执行此操作',403);
   case 'P0001':{
    const message=error.message??'';

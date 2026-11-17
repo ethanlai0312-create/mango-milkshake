@@ -18,3 +18,7 @@
 /* Empty operations must retain their table cell and full-width row divider. */
 @media(min-width:801px) and (max-width:1599px){.user-records td[data-label="操作"]:has(.actions:empty){display:table-cell!important}.user-records tbody tr:not(:last-child)>td{border-bottom:1px solid var(--line)}}
 .route-content>.card+.card,.route-content>div>.card+.card{margin-top:24px}.settings-page>.settings-security{margin-bottom:24px}.actions{column-gap:10px;row-gap:10px}.upload-task+.upload-task{margin-top:16px}.manual-question-grade+.manual-question-grade{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+
+.read-only-accounts th:last-child,.read-only-accounts td[data-label="操作"]{display:none!important}.read-only-accounts th:first-child{width:40%}.read-only-accounts th:nth-child(2){width:60%}
+
+.user-records.read-only-accounts td[data-label="操作"]:has(.actions:empty){display:none!important}

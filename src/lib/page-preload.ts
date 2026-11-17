@@ -38,7 +38,7 @@ export function warmPageModules(){
   void (async()=>{for(const resource of [pageModules.editor,pageModules.attempt]){if(cancelled)return;try{await resource.load();}catch{/* Retry on a later intent. */}}})();
   const pages=['exams','mine','history','shared','convert',...['review','users','invites','grading','trash','logs','config'].filter(p=>getReadCacheRole()!=='tester'&&canVisitManagement(getReadCacheRole()??'',p))];
   for(const page of pages){if(cancelled)return;try{await preparePage(page);}catch{/* Retry on explicit selection. */}}
-
+  
  });
  return()=>{cancelled=true;cancelAnimationFrame(frame);};
 }
@@ -46,7 +46,7 @@ export function warmPageModules(){
 /** Sensitive reads are handed to this one navigation only, never stored in the display cache. */
 export async function prepareNavigation(page:string):Promise<any>{
  await preparePage(page);
- if(getReadCacheRole()==='admin'&&['users','config'].includes(page))return {rows:await api(page,{mode:'admin',search:'',offset:0})};
+ if(canVisitManagement(getReadCacheRole()??'',page)&&getReadCacheRole()!=='tester'&&['users','config'].includes(page))return {rows:await api(page,{mode:'admin',search:'',offset:0})};
  if(page==='mistakes'){
   const exams=await api('mistakeExams');
   const rows=exams[0]?await api('mistakes',{exam:exams[0].exam_id,mode:'wrong',offset:0}):[];

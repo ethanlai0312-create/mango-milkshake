@@ -22,7 +22,7 @@ describe('login identity and public nickname',()=>{
   expect(validateApiInput({action:'settings',settings:{theme:'dark'},loginId:'Other'})).toHaveProperty('status',400);
  });
  it('requires a bound ID and disallows multiple-use invitation payloads',()=>{
-  expect(validateApiInput({action:'createInvite',loginId:'AbCd',hours:24})).toHaveProperty('action','createInvite');
+  expect(validateApiInput({action:'createInvite',loginId:'AbCd',label:'测试备注',hours:24})).toHaveProperty('action','createInvite');
   expect(validateApiInput({action:'createInvite',label:'unbound'})).toHaveProperty('status',400);
   expect(validateApiInput({action:'createInvite',loginId:'AbCd',maxUses:2})).toHaveProperty('status',400);
  });
