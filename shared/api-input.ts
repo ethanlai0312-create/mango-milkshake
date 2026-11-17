@@ -40,7 +40,7 @@ const revision = integer(0, 2_147_483_646);
 const search = optional(text(200));
 const id = {id: uuid};
 const password = requiredText(256);
-const login = {username: requiredText(128), password};
+const login = {loginId: requiredText(128), password};
 const purposes = enumeration('shared', 'attachment', 'submission', 'avatar', 'conversion');
 const avatar = fields({
  color: optional(value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)),
@@ -105,10 +105,11 @@ const exam = fields({
 const actions: Record<string, Fields> = {
  health: {},
  login,
- register: {...login, invite: requiredText(256)},
- bootstrap: {...login, token: requiredText(512)},
+ register: {...login, nickname: requiredText(128), invite: requiredText(256)},
+ bootstrap: {...login, nickname: optional(requiredText(128)), token: requiredText(512)},
  sessionStatus: {}, sessionActivity: {}, me: {}, adminMfaFactors: {},
  settings: {
+  nickname: optional(requiredText(128)),
   settings: fields({theme: optional(enumeration('light', 'dark', 'system')), language: optional(enumeration('zh-CN', 'zh-TW'))}),
   // Kept for compatibility with saved editor/app builds. The settings action reads the existing avatar server-side.
   avatar: optional(avatar), avatar_path: optional(nullable(uuid)),
@@ -124,7 +125,7 @@ const actions: Record<string, Fields> = {
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,
- createInvite: {label: optional(text(100)), maxUses: optional(integer(1, 10000)), hours: optional(integer(1, 8760)), testOnly: optional(bool)},
+ createInvite: {loginId: requiredText(128), label: optional(text(100)), hours: optional(integer(1, 8760)), testOnly: optional(bool)},
  revokeInvite: id,
  exams: {mode: optional(enumeration('mine', 'admin', 'trash', 'public')), search, offset},
  createExam: {title: requiredText(200)},

@@ -1,5 +1,14 @@
 // Exact business messages emitted by the checked-in database migrations.
 const businessMessages=new Set([
+ "ID格式无效",
+ "ID已注册，不能重复使用",
+ "ID已有有效密令",
+ "ID正在注册，请稍后重试",
+ "密令参数无效",
+ "密令无效、过期、已用尽或与ID不匹配",
+ "生成密令前必须填写全新ID",
+ "密令绑定ID不能修改",
+ "昵称格式无效",
  "CONFLICT:其他设备已有新答案",
  "CONFLICT:审核期间试卷已修改，请重新检查",
  "CONFLICT:成绩已有更新，请重新载入",

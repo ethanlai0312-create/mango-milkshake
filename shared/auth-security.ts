@@ -5,7 +5,7 @@ export function adminNeedsMfa(role:string,aal:unknown,factors:readonly {factor_t
  return role==='admin'&&aal!=='aal2'&&(force||(factors??[]).some(f=>f.factor_type==='totp'&&f.status==='verified'));
 }
 export function adminNeedsEnrollment(role:string,factors:readonly {factor_type:string;status:string}[]|undefined){return role==='admin'&&!(factors??[]).some(f=>f.factor_type==='totp'&&f.status==='verified');}
-export function gatedAdminProfile(profile:any,enrollment:boolean){return {id:profile.id,role:profile.role,username:profile.username,must_change_password:!!profile.must_change_password,admin_mfa_required:true,admin_mfa_enrollment_required:enrollment};}
+export function gatedAdminProfile(profile:any,enrollment:boolean){return {id:profile.id,role:profile.role,username:profile.username,login_id:profile.login_id,must_change_password:!!profile.must_change_password,admin_mfa_required:true,admin_mfa_enrollment_required:enrollment};}
 /** The independent delay sample is selected before account lookup. */
 export function loginFailureTarget(random:number){return LOGIN_FAILURE_FLOOR_MS+Math.floor(Math.max(0,Math.min(1,random))*LOGIN_FAILURE_JITTER_MS);}
 export async function padLoginFailure(started:number,target:number,clock=()=>performance.now(),sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms))){

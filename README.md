@@ -1,12 +1,12 @@
 # Mango Study · 芒果學社
 
-目前版本：**v02.00.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v02.01.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
 ## 公開示範帳號
 
-| 權限 | 帳號 | 密碼 |
+| 權限 | 登入 ID | 密碼 |
 | --- | --- | --- |
 | admin | admin | admin |
 | user | user | user |
@@ -26,6 +26,10 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 支援不登入 Google 帳號使用；請在本網站綁定基於時間的驗證器，再輸入應用程式顯示的六位數字。
 
+## 登入 ID 與公開暱稱
+
+使用固定 ID 和密碼登入，公開位置只顯示可修改的暱稱。ID 至少4位、不分大小寫查重，僅在自己的設定中只讀顯示。生成註冊密令前需預留全新 ID，每份密令一次註冊；撤銷或過期的未註冊 ID 可重新綁定，舊密令保持無效。資料、頭像和排名依 UUID 關聯，暱稱重名不混用資料。[部署與遷移說明](docs/login-identity.md)。
+
 ## 功能
 
 試卷建立、編輯、JSON/CSV 匯入匯出、預覽、審核、版本與回收站；多種題型、計時、自動保存、本機草稿、評分及人工批改；幾何工具、初始圖形、參考作圖和步驟回放；頭像、設定、排行榜和在線狀態；共享檔案、續傳及私人文件轉換；帳號管理、註冊密令、操作日誌、管理員雙重驗證；響應式介面、鍵盤操作、減少動態效果及離線快取。
@@ -39,7 +43,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 1. 安裝 Node.js 24 與 pnpm 11.25。
 2. 執行 pnpm install --frozen-lockfile。
 3. 複製 .env.example 為 .env.local，填入自己的後端 URL 與公開客戶端金鑰。管理金鑰不可放入前端。
-4. 先啟動本機網關（預設127.0.0.1:5178），再執行 pnpm dev；pnpm typecheck 檢查型別；pnpm build 建置正式靜態檔案。
+4. 先啟動本機網關（預設127.0.0.1:5178），再執行 pnpm dev；pnpm exec tsc -b 檢查型別；pnpm build 建置正式靜態檔案。
 
 登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
 

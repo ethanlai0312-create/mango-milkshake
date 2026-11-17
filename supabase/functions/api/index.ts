@@ -1,3 +1,4 @@
+import {loginId,loginIdKey,loginIdError,nickname,nicknameError} from '../../../shared/identity.ts';
 import {roleAllows,testerExamSummary,testerExamView,testerSharedFile} from '../../../shared/roles.ts';
 import {createDeliveryMap,deliveredExam,canonicalAnswers,publicAttempt} from '../../../shared/delivery.ts';
 import {passwordError,localNewPasswordError,authIpLimit} from '../../../shared/password-security.ts';
@@ -9,7 +10,7 @@ import {validPresenceId,validPresenceUpdate} from '../../../shared/presence.ts';
 import {conversionFormats} from '../../../shared/conversion.ts';
 import {inspectFile,extensions} from '../../../shared/files.ts';
 import {createClient} from '@supabase/supabase-js';
-import {normalizeUsername,validateExam} from '../../../shared/model.ts';
+import {validateExam} from '../../../shared/model.ts';
 import {gradeExam} from '../../../shared/grading.ts';
 import {validateStructure} from '../../../shared/validation.ts';
 import {validateApiInput} from '../../../shared/api-input.ts';
@@ -56,7 +57,8 @@ class RequestRateLimitError extends PublicApiError{constructor(readonly seconds:
 async function limited(key:string,limit:number,seconds:number){if(!check(await db.rpc('api_rate_limit',{p_key:key,p_limit:limit,p_seconds:seconds})))throw new RequestRateLimitError(seconds);}
 function password(p:string){const error=passwordError(p);if(error)fail(error);}
 function newPassword(p:string,name:string){password(p);const error=localNewPasswordError(p,name);if(error)fail(error);}
-function username(n:string){const v=normalizeUsername(String(n??''));if(!/^[\p{L}\p{N}_-]{2,32}$/u.test(v))fail('账号名需为2–32位字母、汉字、数字或下划线');return v;}
+function identity(value:unknown){const error=loginIdError(value);if(error)fail(error);return loginId(value as string);}
+function publicNickname(value:unknown){const error=nicknameError(value);if(error)fail(error);return nickname(value as string);}
 async function mutate(actor:string,action:string,data:any){return check(await db.rpc('api_audited_mutation',{p_actor:actor,p_action:action,p_data:data}));}
 async function fileAllowed(f:any,profile:any){if(profile.role==='tester'&&f.owner_id!==profile.id){
  if(f.purpose==='shared')return true;if(f.purpose!=='attachment'||!f.exam_id)return false;
@@ -127,15 +129,17 @@ Deno.serve(async req=>{
   if(!inviteUsable(invite))fail('密令无效、过期或已用尽');
  }
  if(action==='login'){loginFailureStarted=performance.now();const entropy=new Uint32Array(1);crypto.getRandomValues(entropy);failureTarget=loginFailureTarget(entropy[0]/0xffffffff);}
- let name:string;try{name=username(p.username);}catch(error){if(action!=='login')throw error;check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));fail('账号或密码错误',401);}
+ let name:string;try{name=identity(p.loginId);}catch(error){if(action!=='login')throw error;check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));fail('账号或密码错误',401);}
  if(action!=='login')newPassword(p.password,name);
  if(action==='login'){
- await limited(`login-pair:${await sha(name+'\u0000'+ip+'\u0000'+(device??'unavailable'))}`,10,300);
- const profileExists=check(await db.from('profiles').select('id').eq('username',name).maybeSingle());
- if(!profileExists){check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(name),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
+ await limited(`login-pair:${await sha(loginIdKey(name)+'\u0000'+ip+'\u0000'+(device??'unavailable'))}`,10,300);
+ const profileExists=check(await db.from('profiles').select('id').eq('login_id_key',loginIdKey(name)).maybeSingle());
+ if(!profileExists){check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(loginIdKey(name)),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
  const client=createClient(url,secret,{auth:{persistSession:false}});
- const result=await client.auth.signInWithPassword({email:await email(name),password:p.password});
- if(result.error){if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(name),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
+ const identityUser=await db.auth.admin.getUserById(profileExists.id);
+ if(identityUser.error||!identityUser.data.user?.email){check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));fail('账号或密码错误',401);}
+ const result=await client.auth.signInWithPassword({email:identityUser.data.user.email,password:p.password});
+ if(result.error||result.data.user?.id!==profileExists.id){if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(loginIdKey(name)),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
  const profile=check(await db.from('profiles').select('*').eq('id',result.data.user.id).single());
  const idleExpiresAt=await sessionDeadline(result.data.session.access_token,profile.id,false);
  if(!profile.active)fail('账号已停用',403);check(await db.from('profiles').update({last_login_at:new Date().toISOString()}).eq('id',profile.id));
@@ -143,18 +147,24 @@ Deno.serve(async req=>{
  return new Response(JSON.stringify({session:result.data.session,profile:mfaRequired?gatedAdminProfile(profile,adminNeedsEnrollment(profile.role,result.data.user.factors)):{...profile,admin_mfa_required:false},idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
  }
  if(action==='bootstrap'){
- if(name!=='admin')fail('保留账号');
  const hash=await sha(String(p.token));
  const allowed=check(await db.rpc('api_claim_bootstrap',{p_hash:hash}));
  if(!allowed)fail('初始化已禁用',403);
  const user=check(await db.auth.admin.createUser({email:await email(name),password:p.password,email_confirm:true,app_metadata:{provisioned:'mango-v1'}})).user;
- check(await db.from('profiles').insert({id:user.id,username:name,role:'admin'}));
+ check(await db.from('profiles').insert({id:user.id,username:publicNickname(p.nickname??name),login_id:name,role:'admin'}));
  return new Response(JSON.stringify({ok:true}),{headers});
  }
- const registration=check(await db.from('system_config').select('value').eq('key','registration_enabled').maybeSingle());if(registration?.value===false)fail('管理员已暂停新账号注册');if(name==='admin')fail('账号名已保留');
- await db.rpc('api_reserve_registration',{p_username:name,p_digest:await sha(String(p.invite).trim())}).then(check);
+ const registration=check(await db.from('system_config').select('value').eq('key','registration_enabled').maybeSingle());if(registration?.value===false)fail('管理员已暂停新账号注册');
+ const displayName=publicNickname(p.nickname);
+ const reservation=check(await db.rpc('api_reserve_identity_registration',{p_login_id:name,p_digest:await sha(String(p.invite).trim())}));
  let id:string|undefined;
- try{const user=check(await db.auth.admin.createUser({email:await email(name),password:p.password,email_confirm:true,app_metadata:{provisioned:'mango-v1'}})).user;id=user.id;check(await db.rpc('api_register_profile',{p_user:id,p_username:name}));}catch(e){if(id)await db.auth.admin.deleteUser(id);await db.rpc('api_release_registration',{p_username:name});throw e;}
+ try{const user=check(await db.auth.admin.createUser({email:await email(crypto.randomUUID()),password:p.password,email_confirm:true,app_metadata:{provisioned:'mango-v1'}})).user;id=user.id;check(await db.rpc('api_complete_identity_registration',{p_user:id,p_reservation:reservation,p_nickname:displayName}));}catch(e){
+  // A lost RPC response must never remove an account that actually committed.
+  const committed=id?await db.from('profiles').select('id,login_id_key').eq('id',id).maybeSingle():null;
+  if(committed?.error)fail('注册结果暂时无法确认，请稍后使用ID登录检查',503);
+  if(!committed?.data){if(id)check(await db.auth.admin.deleteUser(id));check(await db.rpc('api_release_identity_registration',{p_reservation:reservation}));throw e;}
+  if(committed.data.login_id_key!==loginIdKey(name))fail('注册结果暂时无法确认，请稍后使用ID登录检查',503);
+ }
  return new Response(JSON.stringify({ok:true}),{headers});
  }
  const token=req.headers.get('authorization')?.replace(/^Bearer /i,'')??'';
@@ -181,8 +191,8 @@ Deno.serve(async req=>{
   break;
  }
  case 'me':data=mfaRequired?gatedAdminProfile(me,adminNeedsEnrollment(me.role,auth.data.user.factors)):{...me,admin_mfa_required:false};break;
- case 'settings':{const existing=check(await db.from('profiles').select('avatar,avatar_path').eq('id',me.id).single());p.avatar=existing.avatar;p.avatar_path=existing.avatar_path;if(p.avatar_path){const photo=check(await db.from('files').select('id').eq('id',p.avatar_path).eq('owner_id',me.id).eq('purpose','avatar').eq('verified',true).maybeSingle());if(!photo)fail('头像必须是本人已验证的图片');}const settings={theme:['light','dark','system'].includes(p.settings?.theme)?p.settings.theme:'system',language:['zh-CN','zh-TW'].includes(p.settings?.language)?p.settings.language:'zh-CN'};const avatar={color:/^#[0-9a-f]{6}$/i.test(p.avatar?.color)?p.avatar.color:'#ffbd45',expression:String(p.avatar?.expression??'smile').slice(0,20),hat:['none','cap','bow','flower','headphones'].includes(p.avatar?.hat)?p.avatar.hat:'none',glasses:!!p.avatar?.glasses};data=check(await db.rpc('api_update_settings',{p_user:me.id,p_settings:settings,p_avatar:avatar,p_photo:p.avatar_path??null}));break;}
- case 'changePassword':{await limited('reauth:'+me.id,10,900);newPassword(p.newPassword,me.username);const c=createClient(url,secret,{auth:{persistSession:false}});const re=await c.auth.signInWithPassword({email:await email(me.username),password:p.currentPassword});if(re.error)fail('当前密码错误',401);const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:me.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:false}));check(await db.auth.admin.updateUserById(me.id,{password:p.newPassword,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));const fresh=check(await c.auth.signInWithPassword({email:await email(me.username),password:p.newPassword}));data={ok:true,session:fresh.session};break;}
+ case 'settings':{const existing=check(await db.from('profiles').select('avatar,avatar_path').eq('id',me.id).single());p.avatar=existing.avatar;p.avatar_path=existing.avatar_path;if(p.avatar_path){const photo=check(await db.from('files').select('id').eq('id',p.avatar_path).eq('owner_id',me.id).eq('purpose','avatar').eq('verified',true).maybeSingle());if(!photo)fail('头像必须是本人已验证的图片');}const settings={theme:['light','dark','system'].includes(p.settings?.theme)?p.settings.theme:'system',language:['zh-CN','zh-TW'].includes(p.settings?.language)?p.settings.language:'zh-CN'};const avatar={color:/^#[0-9a-f]{6}$/i.test(p.avatar?.color)?p.avatar.color:'#ffbd45',expression:String(p.avatar?.expression??'smile').slice(0,20),hat:['none','cap','bow','flower','headphones'].includes(p.avatar?.hat)?p.avatar.hat:'none',glasses:!!p.avatar?.glasses};data=check(await db.rpc('api_update_identity_settings',{p_user:me.id,p_settings:settings,p_nickname:p.nickname===undefined?me.username:publicNickname(p.nickname)}));break;}
+ case 'changePassword':{await limited('reauth:'+me.id,10,900);newPassword(p.newPassword,me.login_id);const c=createClient(url,secret,{auth:{persistSession:false}});const re=await c.auth.signInWithPassword({email:auth.data.user.email!,password:p.currentPassword});if(re.error)fail('当前密码错误',401);const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:me.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:false}));check(await db.auth.admin.updateUserById(me.id,{password:p.newPassword,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));const fresh=check(await c.auth.signInWithPassword({email:auth.data.user.email!,password:p.newPassword}));data={ok:true,session:fresh.session};break;}
  case 'presence':{if(!validPresenceUpdate(p.tab,p.sequence,p.online))fail('在线状态参数无效');check(await db.rpc('api_presence_touch',{p_user:me.id,p_session:sessionId,p_tab:p.tab,p_sequence:p.sequence,p_online:p.online}));data={ok:true};break;}
  case 'userPresence':{admin();if(!Array.isArray(p.ids)||p.ids.length>50||!p.ids.every(validPresenceId))fail('账号列表无效');data=check(await db.rpc('api_account_presence',{p_users:p.ids}));break;}
  case 'users':{admin();const profiles=check(await db.from('profiles').select('id,username,active,role,created_at,last_login_at,password_changed_at').order('created_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));const presence=check(await db.rpc('api_account_presence',{p_users:profiles.map((u:any)=>u.id)}));data=profiles.map((u:any)=>({...u,...presence.find((s:any)=>s.user_id===u.id)}));break;}
@@ -192,9 +202,9 @@ Deno.serve(async req=>{
  case 'testerExam':{const e=check(await db.from('exams').select('id,status,published_version_id').eq('id',p.id).eq('status','published').is('purged_at',null).maybeSingle());if(!e?.published_version_id)fail('试卷未发布',404);const v=check(await db.from('exam_versions').select('snapshot').eq('id',e.published_version_id).single());data=testerExamView({...v.snapshot,id:e.id,status:'published'});break;}
  case 'userState':admin();data=await mutate(me.id,'userState',{id:p.id,active:p.active});break;
  case 'resetPassword':{admin();if(p.id===me.id)fail('请在设置中修改自己的密码');const temp=crypto.randomUUID()+'A7';const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:p.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:true}));check(await db.auth.admin.updateUserById(p.id,{password:temp,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));data={temporaryPassword:temp};break;}
- case 'invites':admin();data=check(await db.from('invites').select('id,label,max_uses,used,expires_at,revoked,created_at').order('created_at',{ascending:false}));break;
- case 'createInvite':{admin();const code=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().slice(0,8);await mutate(me.id,'createInvite',{digest:await sha(code),maxUses:Math.max(1,Math.min(10000,Math.floor(Number(p.maxUses)||1))),hours:Math.max(1,Math.min(8760,Math.floor(Number(p.hours)||24))),label:String(p.label??'').slice(0,100),testOnly:p.testOnly===true});data={code};break;}
- case 'revokeInvite':admin();data=await mutate(me.id,'revokeInvite',{id:p.id});break;
+ case 'invites':admin();data=check(await db.from('invites').select('id,label,login_id,max_uses,used,expires_at,revoked,created_at').order('created_at',{ascending:false}));break;
+ case 'createInvite':{admin();const boundId=identity(p.loginId),code=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().slice(0,8);check(await db.rpc('api_create_identity_invite',{p_actor:me.id,p_login_id:boundId,p_digest:await sha(code),p_hours:Math.max(1,Math.min(8760,Math.floor(Number(p.hours)||24))),p_label:String(p.label??'').slice(0,100),p_test_only:p.testOnly===true}));data={code,login_id:boundId};break;}
+ case 'revokeInvite':{admin();data=check(await db.rpc('api_revoke_identity_invite',{p_actor:me.id,p_id:p.id}));break;}
  case 'exams':{if(me.role==='tester'&&(!p.mode||p.mode==='public')){
  let q=db.from('exams').select('id,published_version_id,version:exam_versions!exams_published_version_id_fkey!inner(snapshot)').eq('status','published').is('purged_at',null);
  if(p.search)q=q.ilike('version.snapshot->>title',`%${String(p.search).replace(/[%_]/g,'')}%`);
@@ -214,7 +224,7 @@ Deno.serve(async req=>{
  case 'historyQuery':{if(p.all)admin();data=check(await db.rpc('api_history_query',{p_user:me.id,p_all:!!p.all,p_version:p.version??null,p_sort:['date','score','duration'].includes(p.sort)?p.sort:'date',p_offset:Math.max(0,Number(p.offset)||0)}));break;}
  case 'history':{let q=db.from('attempts').select('id,exam_id,exam_version_id,started_at,submitted_at,duration_seconds,score,max_score,grading_status,exams(title)').not('submitted_at','is',null);if(p.all){admin();}else q=q.eq('user_id',me.id);if(p.exam_id)q=q.eq('exam_id',p.exam_id);data=check(await q.order('submitted_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));break;}
  case 'grade':{admin();const a=check(await db.from('attempts').select('*').eq('id',p.id).single());if(!a.submitted_at)fail('答卷尚未提交');const v=check(await db.from('exam_versions').select('snapshot').eq('id',a.exam_version_id).single());const review=buildManualReview(v.snapshot.questions,a.grades,p,a.comments??{});if(review.errors.length)fail(review.errors.join('；'));data=await mutate(me.id,'grade',{id:p.id,revision:Number.isInteger(p.revision)?p.revision:a.revision,grades:review.grades,score:review.score,comments:review.comments});break;}
- case 'leaderboard':{const v=check(await db.from('exam_versions').select('exam_id').eq('id',p.version).single());const e=check(await db.from('exams').select('status,owner_id').eq('id',v.exam_id).single());if(e.status!=='published'&&e.owner_id!==me.id&&me.role!=='admin')fail('无权限',403);const ranked=check(await db.rpc('api_leaderboard',{p_version:p.version,p_offset:p.offset??0,p_limit:50}));const profiles=ranked.length?check(await db.from('profiles').select('username,avatar,avatar_code,avatar_path,role').in('username',ranked.map((r:any)=>r.username))):[];data=ranked.filter((r:any)=>me.role!=='tester'||r.username===me.username).map((r:any)=>({...r,profile:profiles.find((u:any)=>u.username===r.username)??null}));break;}
+ case 'leaderboard':{const v=check(await db.from('exam_versions').select('exam_id').eq('id',p.version).single());const e=check(await db.from('exams').select('status,owner_id').eq('id',v.exam_id).single());if(e.status!=='published'&&e.owner_id!==me.id&&me.role!=='admin')fail('无权限',403);const ranked=check(await db.rpc('api_leaderboard',{p_version:p.version,p_offset:p.offset??0,p_limit:50}));const profiles=ranked.length?check(await db.from('profiles').select('id,username,avatar,avatar_code,avatar_path,role').in('id',ranked.map((r:any)=>r.user_id))):[];data=ranked.filter((r:any)=>me.role!=='tester'||r.user_id===me.id).map((r:any)=>({...r,profile:profiles.find((u:any)=>u.id===r.user_id)??null}));break;}
  case 'upload':{if(!extensions.includes(String(p.name??'').split('.').pop()?.toLowerCase()??''))fail('不支持此文件类型');const purpose=p.purpose;if(!['shared','attachment','submission','avatar','conversion'].includes(purpose))fail('用途无效');if(purpose==='shared')admin();if(!Number.isSafeInteger(p.size)||p.size<1)fail('文件大小无效或文件为空');if(purpose!=='attachment'&&p.exam_id)fail('此文件用途不能绑定试卷');if(purpose!=='submission'&&p.attempt_id)fail('此文件用途不能绑定答卷');if(purpose==='attachment'&&!p.exam_id)fail('附件需要绑定试卷');if(purpose==='submission'&&!p.attempt_id)fail('文件提交需要正式答卷');if(p.exam_id){const e=check(await db.from('exams').select('owner_id').eq('id',p.exam_id).single());if(e.owner_id!==me.id&&me.role!=='admin')fail('无权限',403);}if(p.attempt_id){const a=check(await db.from('attempts').select('user_id,submitted_at').eq('id',p.attempt_id).single());if(a.user_id!==me.id||a.submitted_at)fail('无权限',403);}const name=String(p.name).replace(/[\\/\x00-\x1f]/g,'_').slice(0,200),path=`${me.id}/${crypto.randomUUID()}/${name}`;const ticket=check(await db.storage.from('mango-private').createSignedUploadUrl(path));const row=check(await db.rpc('api_reserve_upload',{p_user:me.id,p_purpose:purpose,p_name:name,p_size:p.size,p_mime:String(p.mime),p_path:path,p_exam:p.exam_id??null,p_attempt:p.attempt_id??null}));data={file:row,...ticket};break;}
  case 'renewUpload':{const f=check(await db.from('files').select('*').eq('id',p.id).eq('owner_id',me.id).eq('verified',false).maybeSingle());if(!f||Date.parse(f.created_at)<=Date.now()-86400000)fail('上传预约已失效或无权限',404);if(f.purpose==='shared')admin();if(f.purpose==='submission'){const a=check(await db.from('attempts').select('submitted_at').eq('id',f.attempt_id).eq('user_id',me.id).single());if(a.submitted_at)fail('答卷已提交，不能继续上传',403);}data={file:f,...check(await db.storage.from('mango-private').createSignedUploadUrl(f.path))};break;}
  case 'verifyUpload':{const f=check(await db.from('files').select('*').eq('id',p.id).eq('owner_id',me.id).single());if(!f.verified&&Date.parse(f.created_at)<=Date.now()-86400000)fail('上传预约已失效',409);if(await storedSize(f.path)!==Number(f.size))fail('文件大小不匹配');const bytes=await storedHeader(f.path);const inspected=inspectFile(f.name,bytes);if(f.purpose==='avatar'&&!['image/png','image/jpeg','image/gif','image/webp'].includes(inspected.mime))fail('头像只支持PNG/JPEG/GIF/WEBP');check(await db.from('files').update({verified:true,mime:inspected.mime}).eq('id',f.id));data={ok:true,file:{...f,verified:true,mime:inspected.mime}};break;}

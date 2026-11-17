@@ -1,4 +1,5 @@
-/** A cached rank must not override the signed-in user's freshly saved avatar. */
+/** Nicknames are mutable and non-unique. Compare stable account IDs only. */
 export function leaderboardAvatarProfile(row:any,currentProfile?:any){
- return currentProfile?.username&&row.username===currentProfile.username?currentProfile:row.profile??{};
+ const accountId=row.user_id??row.profile?.id;
+ return typeof currentProfile?.id==='string'&&currentProfile.id.length>0&&accountId===currentProfile.id?currentProfile:row.profile??{};
 }

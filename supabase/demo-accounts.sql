@@ -16,8 +16,8 @@ begin
   values('00000000-0000-0000-0000-000000000000',user_id,'authenticated','authenticated',login_email,extensions.crypt(item.password,extensions.gen_salt('bf')),now(),'{"provider":"email","providers":["email"],"provisioned":"mango-v1"}','{}',now(),now(),'','','','');
   insert into auth.identities(id,user_id,provider_id,identity_data,provider,created_at,updated_at)
   values(gen_random_uuid(),user_id,user_id::text,jsonb_build_object('sub',user_id::text,'email',login_email),'email',now(),now());
-  insert into public.profiles(id,username,role,must_change_password,password_changed_at)
-  values(user_id,item.username,item.account_role,false,now());
+  insert into public.profiles(id,username,login_id,role,must_change_password,password_changed_at)
+  values(user_id,item.username,item.username,item.account_role,false,now());
  end loop;
 end $$;
 commit;
