@@ -119,6 +119,8 @@ const actions: Record<string, Fields> = {
  presence: {tab: uuid, sequence: integer(0, Number.MAX_SAFE_INTEGER), online: bool},
  userPresence: {ids: array(uuid, 50)},
  users: legacyAdminFilters,
+ userVisibility: {id: uuid},
+ setUserVisibility: {id: uuid, blocked: array(uuid, 200), all: bool},
  updateAvatar: {avatar: optional(avatar), avatar_path: optional(nullable(uuid))},
  purgeAccount: {...id, confirmPermanent: bool, confirmUsername: requiredText(128)},
  userState: {...id, active: bool},
