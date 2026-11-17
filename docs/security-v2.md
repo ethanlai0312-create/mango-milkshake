@@ -6,9 +6,9 @@
 
 - 瀏覽器只保存隨機不透明的 HttpOnly、Secure、SameSite=Strict、Host-only Cookie。access/refresh token 僅留在本機網關記憶體，不返回前端、localStorage 或 sessionStorage。
 - 網關重啟後需重新登入；舊版 localStorage 憑證不自動遷移，首次更新需重新登入。原離線草稿保留；斷網後重新載入不會用舊資料恢復權限。
-- 登入、改密和 MFA 驗證僅在各自固定的可信回應位置採用令牌。題目、答案或其他業務物件中的同名欄位不會變更會話。
+- 登入與改密僅在各自固定的可信回應位置採用令牌。題目、答案或其他業務物件中的同名欄位不會變更會話。
 - JSON 寫入需要同源自訂標頭，並驗證 Origin / Fetch Metadata；Cookie 不能取代 CSRF 防護。簽名上傳仍使用短期、用途綁定的文件授權，並非登入令牌。
-- 管理員每次密碼登入後均需要 TOTP；零驗證器帳號只能先綁定驗證器，不能進入業務操作。敏感管理操作仍需要新的單次確認。
+- 管理員使用密碼登入後直接進入業務操作；本版本已移除 TOTP 驗證器、綁定介面與單次驗證碼確認。敏感操作仍由伺服器檢查角色、帳號狀態與會話。
 - 伺服器維持 60 分鐘無操作到期；背景心跳和刷新不延長此期限。更換權限、停用和撤銷會話由後端檢查。
 
 ## 登入與入口
@@ -28,6 +28,6 @@
 - HTML shell 使用 no-transform 防止邊緣自動注入統計腳本；API 私人回應仍為 no-store。版本號是公開發布識別，不視為機密。
 - security.txt 及 SECURITY.md 指向此倉庫的私密漏洞報告；部署到其他倉庫或域名時，修改 Contact/Canonical，確認私密回報已啟用。
 
-不使用短信、語音、付費 WAF、付費監控或新增外部驗證服務。不承諾單機和免費入口能阻止所有大規模 DDoS，也不宣稱消除全部已知/未知漏洞。實際密碼輪換及第二部驗證器由帳號持有人操作。
+不使用短信、語音、付費 WAF、付費監控或新增外部驗證服務。不承諾單機和免費入口能阻止所有大規模 DDoS，也不宣稱消除全部已知/未知漏洞。實際密碼輪換由帳號持有人操作。
 
 參考：[OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)、[OWASP CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)、[Supabase Server-side Auth](https://supabase.com/docs/guides/auth/server-side/advanced-guide)、[Cloudflare Analytics](https://developers.cloudflare.com/web-analytics/get-started/)、[RFC 9116](https://www.rfc-editor.org/rfc/rfc9116.html)。

@@ -7,7 +7,7 @@ const id='60000000-0000-4000-8000-000000000001';
 afterEach(()=>{setReadCacheAccount();vi.restoreAllMocks();vi.useRealTimers();});
 describe('tester inherits user with private-data isolation',()=>{
  it.each(['me','sessionStatus','sessionActivity','presence','changePassword','exams','testerExam','files','testerFile','getExam','attempt','history','historyQuery','leaderboard','createExam','saveExam','startAttempt','saveAttempt','submitAttempt','upload','renewUpload','verifyUpload','deleteFile','settings','updateAvatar','conversionInputs','conversions','conversionDownload'])('allows personal user action %s',action=>expect(roleAllows('tester',action)).toBe(true));
- it.each(['users','userPresence','adminMfaFactors','logs','invites','config','grade','updateFile','replaceShared','setUserRole','purgeAccount','resetPassword','userState','review','saveConfig','unknown','fileUrl'])('rejects management data/action %s',action=>expect(roleAllows('tester',action)).toBe(false));
+ it.each(['users','userPresence','logs','invites','config','grade','updateFile','replaceShared','setUserRole','purgeAccount','resetPassword','userState','review','saveConfig','unknown','fileUrl'])('rejects management data/action %s',action=>expect(roleAllows('tester',action)).toBe(false));
  it('rejects admin scopes while retaining personal content',()=>{
   expect(roleAllows('tester','exams',{mode:'mine'})).toBe(true);for(const mode of ['admin','trash'])expect(roleAllows('tester','exams',{mode})).toBe(false);
   for(const action of ['history','historyQuery'])expect(roleAllows('tester',action,{all:true})).toBe(false);

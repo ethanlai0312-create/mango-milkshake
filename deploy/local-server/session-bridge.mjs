@@ -1,7 +1,6 @@
 import {createHash} from 'node:crypto';
 import {createSessionVault,csrfAllowed,readCookie,sessionCookie,scrubSessionPayload} from './browser-session.mjs';
 import {publicActionProblem,stripInternalResponseHeaders,hstsValue} from './ingress-policy.mjs';
-const factor=/^\/auth\/v1\/factors(?:\/[a-f0-9-]{36}\/(?:challenge|verify))?$/i;
 export function createSessionBridge({upstreamOrigin,uploadGrants,rewriteUrl,fetcher=fetch,maxSessions=1000}){
  const vault=createSessionVault({maxSessions});
  const send=(res,status,data,extra={})=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin',...extra});res.end(JSON.stringify(data));};
@@ -22,7 +21,7 @@ export function createSessionBridge({upstreamOrigin,uploadGrants,rewriteUrl,fetc
   }
   try{
    const isApi=path==='/functions/v1/api',isSession=path==='/session';
-   if(!isApi&&!isSession&&!(req.method==='POST'&&factor.test(path)))return send(res,404,{error:'此认证接口不对外开放'},baseHeaders);
+   if(!isApi&&!isSession)return send(res,404,{error:'此认证接口不对外开放'},baseHeaders);
    if(isSession){
     if(!csrfAllowed(req.headers,origin))return send(res,403,{error:'请求来源不受支持'},baseHeaders);
     if(req.method==='GET'||req.method==='POST'){
@@ -42,7 +41,6 @@ export function createSessionBridge({upstreamOrigin,uploadGrants,rewriteUrl,fetc
    if(!worker&&req.headers.authorization)return send(res,401,{error:'请刷新页面后重新登录',code:'SESSION_EXPIRED'},baseHeaders);
    if(!worker&&!anonymous&&!entry)return send(res,401,{error:'请重新登录',code:'SESSION_EXPIRED'},baseHeaders);
    if(!anonymous&&!worker&&req.headers['x-mango-session-id']&&req.headers['x-mango-session-id']!==entry?.info.session_id)return send(res,409,{error:'账号已变化，请重试',code:'SESSION_CHANGED'},baseHeaders);
-   if(!isApi){const gate=await upstream('/functions/v1/api','POST',{action:'me'},true);if(!gate.ok){if(gate.status===401)clear();return send(res,gate.status,{error:'请重新登录后操作验证器'},baseHeaders);}const identity=await gate.json();if((identity.data??identity)?.role!=='admin')return send(res,403,{error:'仅主管理员可使用双重验证'},baseHeaders);}
    const response=await upstream(path,req.method,payload,!anonymous&&!worker);
    const headers=Object.fromEntries(response.headers);stripInternalResponseHeaders(headers);for(const key of ['content-encoding','content-length','transfer-encoding','connection','access-control-allow-origin','set-cookie'])delete headers[key];Object.assign(headers,baseHeaders,{'cache-control':'no-store','x-content-type-options':'nosniff','cross-origin-resource-policy':'same-origin','referrer-policy':'no-referrer'});
    if(!worker&&!anonymous&&response.status===401)clear();

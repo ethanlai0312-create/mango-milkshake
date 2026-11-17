@@ -22,10 +22,6 @@ export function createCookieAuthClient(base:string,key:string){
   refreshSession:async()=>{await send('/session','POST',{});const result=await load(true);emit('TOKEN_REFRESHED');return result;},
   onAuthStateChange:(callback:(event:string,session:any)=>void)=>{listeners.add(callback);return {data:{subscription:{unsubscribe:()=>listeners.delete(callback)}}};},
   signOut:async()=>{try{await send('/session','DELETE');revision++;pending=undefined;current=null;emit('SIGNED_OUT');channel?.postMessage('changed');return {error:null};}catch(error){return {error};}},
-  mfa:{
-   enroll:async(args:any)=>{try{return {data:await send('/auth/v1/factors','POST',{factor_type:args.factorType,issuer:args.issuer,friendly_name:args.friendlyName}),error:null};}catch(error){return {data:null,error};}},
-   challengeAndVerify:async({factorId,code}:{factorId:string;code:string})=>{try{const challenge=await send('/auth/v1/factors/'+factorId+'/challenge','POST',{});const data=await send('/auth/v1/factors/'+factorId+'/verify','POST',{challenge_id:challenge.id,code});await load(true);emit('TOKEN_REFRESHED');channel?.postMessage('changed');return {data,error:null};}catch(error){return {data:null,error};}},
-  },
  };
  return {auth} as unknown as SupabaseClient;
 }

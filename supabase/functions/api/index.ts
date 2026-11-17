@@ -3,7 +3,7 @@ import {loginId,loginIdKey,loginIdError,nickname,nicknameError} from '../../../s
 import {nonDestructiveExamChange,isBusinessManager,isTesterRole,roleAllows,testerExamSummary,testerExamView,testerSharedFile} from '../../../shared/roles.ts';
 import {createDeliveryMap,deliveredExam,canonicalAnswers,publicAttempt} from '../../../shared/delivery.ts';
 import {passwordError,localNewPasswordError,authIpLimit} from '../../../shared/password-security.ts';
-import {adminNeedsMfa,adminNeedsEnrollment,gatedAdminProfile,loginFailureTarget,padLoginFailure,inviteUsable,publicConfiguration,retryAfterSeconds} from '../../../shared/auth-security.ts';
+import {loginFailureTarget,padLoginFailure,inviteUsable,publicConfiguration,retryAfterSeconds} from '../../../shared/auth-security.ts';
 import {validateAnswers} from '../../../shared/answers.ts';
 import {bindDrawingAnswers,bindDrawingQuestions} from '../../../shared/drawing-question.ts';
 import {buildManualReview,releasedDrawingReferences} from '../../../shared/manual-review.ts';
@@ -30,17 +30,6 @@ async function sessionDeadline(token:string,userId:string,activity:boolean):Prom
  const end=check(await db.rpc('api_session_idle_deadline',{p_user:userId,p_session:id,p_activity:activity}));
  if(typeof end!=='string')fail('请重新登录',401,'SESSION_EXPIRED');
  return end;
-}
-const sensitiveAdminActions=new Set(['setUserRole','purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
-function requiresAdminMfa(role:string,aal:unknown,factors:readonly {factor_type:string;status:string}[]|undefined){
- return adminNeedsMfa(role,aal,factors,true);
-}
-async function requireFreshAdminFactor(token:string,userId:string,sessionId:string){
- const {aal,amr}=decodeJwt(token);
- const checked=Array.isArray(amr)?amr.find(entry=>entry&&entry.method==='totp'&&Number.isSafeInteger(entry.timestamp)):undefined;
- if(aal!=='aal2'||!checked||!check(await db.rpc('api_consume_admin_step_up',{
-  p_user:userId,p_session:sessionId,p_verified_at:checked.timestamp,
- })))fail('请使用验证器重新确认此次操作',403);
 }
 async function storedSize(path:string){const info=check(await db.storage.from('mango-private').info(path));const size=Number(info.size);if(!Number.isSafeInteger(size)||size<1)fail('存储文件大小无效');return size;}
 async function storedHeader(path:string){
@@ -145,8 +134,7 @@ Deno.serve(async req=>{
  const profile=check(await db.from('profiles').select('*').eq('id',result.data.user.id).single());
  const idleExpiresAt=await sessionDeadline(result.data.session.access_token,profile.id,false);
  if(!profile.active)fail('账号已停用',403);check(await db.from('profiles').update({last_login_at:new Date().toISOString()}).eq('id',profile.id));
- const mfaRequired=requiresAdminMfa(profile.role,'aal1',result.data.user.factors);
- return new Response(JSON.stringify({session:result.data.session,profile:mfaRequired?gatedAdminProfile(profile,adminNeedsEnrollment(profile.role,result.data.user.factors)):{...profile,admin_mfa_required:false},idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
+ return new Response(JSON.stringify({session:result.data.session,profile,idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
  }
  if(action==='bootstrap'){
  const hash=await sha(String(p.token));
@@ -167,15 +155,13 @@ Deno.serve(async req=>{
   if(!committed?.data){if(id)check(await db.auth.admin.deleteUser(id));check(await db.rpc('api_release_identity_registration',{p_reservation:reservation}));throw e;}
   if(committed.data.login_id_key!==loginIdKey(name))fail('注册结果暂时无法确认，请稍后使用ID登录检查',503);
  }
- const registered=check(await db.from('profiles').select('*').eq('id',id).single());const identityUser=check(await db.auth.admin.getUserById(id!)).user;const client=createClient(url,secret,{auth:{persistSession:false}});const signed=await client.auth.signInWithPassword({email:identityUser.email!,password:p.password});if(signed.error)return new Response(JSON.stringify({ok:true,registered_id:registered.login_id,login_required:true}),{headers});const idleExpiresAt=await sessionDeadline(signed.data.session.access_token,registered.id,false);return new Response(JSON.stringify({session:signed.data.session,profile:{...registered,admin_mfa_required:false},idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
+ const registered=check(await db.from('profiles').select('*').eq('id',id).single());const identityUser=check(await db.auth.admin.getUserById(id!)).user;const client=createClient(url,secret,{auth:{persistSession:false}});const signed=await client.auth.signInWithPassword({email:identityUser.email!,password:p.password});if(signed.error)return new Response(JSON.stringify({ok:true,registered_id:registered.login_id,login_required:true}),{headers});const idleExpiresAt=await sessionDeadline(signed.data.session.access_token,registered.id,false);return new Response(JSON.stringify({session:signed.data.session,profile:registered,idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
  }
  const token=req.headers.get('authorization')?.replace(/^Bearer /i,'')??'';
  const auth=await db.auth.getUser(token);if(auth.error&&(auth.error.status===0||(auth.error.status??0)>=500))fail('认证服务暂不可用，请重试',503);
  if(auth.error||!auth.data.user)fail('请重新登录',401,'SESSION_EXPIRED');
  await limited(`user:${auth.data.user.id}`,240,60);
  const sessionId=decodeJwt(token).session_id as string;const idleExpiresAt=await sessionDeadline(token,auth.data.user.id,action==='sessionActivity');const me=check(await db.from('profiles').select('*').eq('id',auth.data.user.id).single());if(!me.active)fail('账号已停用',403);
- const mfaRequired=requiresAdminMfa(me.role,decodeJwt(token).aal,auth.data.user.factors);
- if(mfaRequired&&!['me','sessionStatus','sessionActivity','adminMfaFactors'].includes(action)&&!(action==='changePassword'&&me.must_change_password&&adminNeedsEnrollment(me.role,auth.data.user.factors)))fail('管理员需要完成双重验证',403);
  if(['mistakeExams','mistakes','testerExam','testerFile','getExam','attempt','startAttempt','leaderboard','historyQuery','history','files','exams','fileUrl','conversionDownload'].includes(action)){
   await limited('read:'+me.id+':'+action,action==='fileUrl'?120:action==='startAttempt'?12:45,60);
  }
@@ -183,19 +169,12 @@ Deno.serve(async req=>{
  if(!roleAllows(me.role,action,p))fail('当前权限不能执行此操作',403);
  const admin=()=>{if(me.role!=='admin')fail('需要管理员权限',403);};
  const manager=()=>{if(!isBusinessManager(me.role))fail('需要业务管理权限',403);};
- if(sensitiveAdminActions.has(action)){admin();await requireFreshAdminFactor(token,me.id,sessionId);}
  if(me.must_change_password&&!['me','changePassword','settings','fileUrl','presence','sessionStatus','sessionActivity'].includes(action))fail('请先修改初始或临时密码',403);
  let data:any;
  switch(action){
  case 'sessionStatus':case 'sessionActivity':data={idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()};break;
- case 'adminMfaFactors':{
-  admin();
-  data=(auth.data.user.factors??[]).filter(f=>f.factor_type==='totp'&&f.status==='verified')
-   .map(f=>({id:f.id,name:f.friendly_name||'验证器'}));
-  break;
- }
  case 'ackLoginIdNotice':check(await db.from('profiles').update({id_notice_seen:true}).eq('id',me.id));data={ok:true};break;
- case 'me':data=mfaRequired?gatedAdminProfile(me,adminNeedsEnrollment(me.role,auth.data.user.factors)):{...me,admin_mfa_required:false};break;
+ case 'me':data={...me};break;
  case 'settings':{const existing=check(await db.from('profiles').select('avatar,avatar_path').eq('id',me.id).single());p.avatar=existing.avatar;p.avatar_path=existing.avatar_path;if(p.avatar_path){const photo=check(await db.from('files').select('id').eq('id',p.avatar_path).eq('owner_id',me.id).eq('purpose','avatar').eq('verified',true).maybeSingle());if(!photo)fail('头像必须是本人已验证的图片');}const settings={theme:['light','dark','system'].includes(p.settings?.theme)?p.settings.theme:'system',language:['zh-CN','zh-TW'].includes(p.settings?.language)?p.settings.language:'zh-CN'};const avatar={color:/^#[0-9a-f]{6}$/i.test(p.avatar?.color)?p.avatar.color:'#ffbd45',expression:String(p.avatar?.expression??'smile').slice(0,20),hat:['none','cap','bow','flower','headphones'].includes(p.avatar?.hat)?p.avatar.hat:'none',glasses:!!p.avatar?.glasses};data=check(await db.rpc('api_update_identity_settings',{p_user:me.id,p_settings:settings,p_nickname:p.nickname===undefined?me.username:publicNickname(p.nickname)}));break;}
  case 'changePassword':{await limited('reauth:'+me.id,10,900);newPassword(p.newPassword,me.login_id);const c=createClient(url,secret,{auth:{persistSession:false}});const re=await c.auth.signInWithPassword({email:auth.data.user.email!,password:p.currentPassword});if(re.error)fail('当前密码错误',401);const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:me.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:false}));check(await db.auth.admin.updateUserById(me.id,{password:p.newPassword,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));const fresh=check(await c.auth.signInWithPassword({email:auth.data.user.email!,password:p.newPassword}));data={ok:true,session:fresh.session};break;}
  case 'presence':{if(!validPresenceUpdate(p.tab,p.sequence,p.online))fail('在线状态参数无效');check(await db.rpc('api_presence_touch',{p_user:me.id,p_session:sessionId,p_tab:p.tab,p_sequence:p.sequence,p_online:p.online}));data={ok:true};break;}

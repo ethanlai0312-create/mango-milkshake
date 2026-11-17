@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v2026.11.17.03**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v2026.11.17.04**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -19,31 +19,21 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 使用可選的 supabase/demo-accounts.sql 建立這四組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
 
-## 管理員雙重驗證器
-
-可使用 **Google Authenticator（Google 身份驗證器）**：
-
-- Android：[Google Play 官方下載](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
-- iPhone / iPad：[App Store 官方下載](https://apps.apple.com/app/google-authenticator/id388497605)
-- [本網站綁定與使用教學](docs/admin-mfa.md)
-
-支援不登入 Google 帳號使用；請在本網站綁定基於時間的驗證器，再輸入應用程式顯示的六位數字。
-
 ## 登入 ID 與公開暱稱
 
 使用固定 ID 和密碼登入，公開位置只顯示可修改的暱稱。ID 至少4位、不分大小寫查重，僅在自己的設定中只讀顯示。生成註冊密令前需預留全新 ID，每份密令一次註冊；撤銷或過期的未註冊 ID 可重新綁定，舊密令保持無效。資料、頭像和排名依 UUID 關聯，暱稱重名不混用資料。[部署與遷移說明](docs/login-identity.md)。
 
 ## 四種權限
 
-primary admin（主管理员）保留完整管理权限。secondary admin（副管理员）可创建/复制/编辑未发布试卷、审核发布和退回、查看已提交答卷并批改、上传和编辑共享文件；并可只读查看账号目录（不显示登录 ID）、在线状态、操作日志及系统配置，生成和撤销注册密令。账号停用/恢复、重置密码、权限调整、删除资料、配置修改和回收站仍不开放。无权限菜单和按钮不显示。tester仍为隔离测试权限。只有主管理员要求双重验证。四种演示账号分别保留，详见[权限说明](docs/permissions.md)。
+primary admin（主管理员）保留完整管理权限。secondary admin（副管理员）可创建/复制/编辑未发布试卷、审核发布和退回、查看已提交答卷并批改、上传和编辑共享文件；并可只读查看账号目录（不显示登录 ID）、在线状态、操作日志及系统配置，生成和撤销注册密令。账号停用/恢复、重置密码、权限调整、删除资料、配置修改和回收站仍不开放。无权限菜单和按钮不显示。tester仍为隔离测试权限。所有角色均使用登录 ID 与密码，不使用双重验证。四种演示账号分别保留，详见[权限说明](docs/permissions.md)。
 
 ## 功能
 
-試卷建立、編輯、JSON/CSV 匯入匯出、預覽、審核、版本與回收站；多種題型、計時、自動保存、本機草稿、評分及人工批改；幾何工具、初始圖形、參考作圖和步驟回放；頭像、設定、排行榜和在線狀態；共享檔案、續傳及私人文件轉換；帳號管理、註冊密令、操作日誌、管理員雙重驗證；響應式介面、鍵盤操作、減少動態效果及離線快取。
+試卷建立、編輯、JSON/CSV 匯入匯出、預覽、審核、版本與回收站；多種題型、計時、自動保存、本機草稿、評分及人工批改；幾何工具、初始圖形、參考作圖和步驟回放；頭像、設定、排行榜和在線狀態；共享檔案、續傳及私人文件轉換；帳號管理、註冊密令、操作日誌；響應式介面、鍵盤操作、減少動態效果及離線快取。
 
 ## v2 安全與部署
 
-[完整安全更新與部署說明](docs/security-v2.md)。v2 使用同源 HttpOnly Cookie 網關，前端 URL 設為 /backend，不能直接連到公開 GoTrue。管理員首次使用需綁定 TOTP，此後每次登入均需驗證。更新後需重新登入，原草稿保留。
+[完整安全更新與部署說明](docs/security-v2.md)。v2 使用同源 HttpOnly Cookie 網關，前端 URL 設為 /backend，不能直接連到公開 GoTrue。本版本已移除管理員 TOTP 驗證器，登入與設定頁不再出現雙重驗證入口。更新後需重新登入，原草稿保留。
 
 ## 前端啟動
 

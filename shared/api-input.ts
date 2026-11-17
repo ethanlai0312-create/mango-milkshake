@@ -108,7 +108,7 @@ const actions: Record<string, Fields> = {
  login,
  register: {password, nickname: requiredText(128), invite: requiredText(256)},
  bootstrap: {...login, nickname: optional(requiredText(128)), token: requiredText(512)},
- ackLoginIdNotice: {}, sessionStatus: {}, sessionActivity: {}, me: {}, adminMfaFactors: {},
+ ackLoginIdNotice: {}, sessionStatus: {}, sessionActivity: {}, me: {},
  settings: {
   nickname: optional(requiredText(128)),
   settings: fields({theme: optional(enumeration('light', 'dark', 'system')), language: optional(enumeration('zh-CN', 'zh-TW'))}),

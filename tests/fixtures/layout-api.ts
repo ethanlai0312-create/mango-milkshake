@@ -8,7 +8,7 @@ export async function installLayoutApi(page:Page,role:'admin'|'visitor'|'tester'
  const examId='60000000-0000-4000-8000-000000000002';
  const attemptId='60000000-0000-4000-8000-000000000003';
  const profile={id:userId,login_id:'Layout 1234',username:'排版檢查_長帳號_LayoutAudit',role,active:true,must_change_password:false,
-  id_notice_seen:true,admin_mfa_required:false,avatar_code:1,avatar:{color:'#ffbd45',hat:'cap',glasses:true},avatar_path:null,
+  id_notice_seen:true,avatar_code:1,avatar:{color:'#ffbd45',hat:'cap',glasses:true},avatar_path:null,
   settings:{language:'zh-CN',theme:'dark'}};
  const sessionId='60000000-0000-4000-8000-000000000004';
  const exp=Math.floor(Date.now()/1000)+10800;
@@ -74,7 +74,6 @@ export async function installLayoutApi(page:Page,role:'admin'|'visitor'|'tester'
    case 'conversionInfo':data={configured:true};break;
    case 'settings':Object.assign(profile,{settings:body.settings,...typeof body.nickname==='string'?{username:body.nickname}: {}});data={...profile};break;
    case 'updateAvatar':Object.assign(profile,{avatar:body.avatar??profile.avatar,avatar_path:body.avatar_path??null});data={...profile};break;
-   case 'adminMfaFactors':data=[{id:examId,name:'合成驗證器'}];break;
   }
   return route.fulfill({json:{data,...timing}});
  });

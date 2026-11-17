@@ -1,16 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
-import {adminNeedsMfa,adminNeedsEnrollment,gatedAdminProfile,inviteUsable,loginFailureTarget,padLoginFailure,publicConfiguration,retryAfterSeconds} from '../../shared/auth-security';
+import {inviteUsable,loginFailureTarget,padLoginFailure,publicConfiguration,retryAfterSeconds} from '../../shared/auth-security';
 describe('auth entry hardening',()=>{
- it('requires AAL2 after one verified TOTP factor, while allowing initial enrollment',()=>{
-  const factors=[{factor_type:'totp',status:'verified'}];
-  expect(adminNeedsMfa('admin','aal1',factors)).toBe(true);expect(adminNeedsMfa('admin','aal2',factors)).toBe(false);
-  expect(adminNeedsMfa('admin','aal1',[])).toBe(false);expect(adminNeedsMfa('admin','aal1',[{factor_type:'totp',status:'unverified'}])).toBe(false);
-  expect(adminNeedsMfa('visitor','aal1',factors,true)).toBe(false);expect(adminNeedsMfa('admin','aal1',[],true)).toBe(true);
- });
- it('keeps initial admin enrollment gated and only returns setup metadata',()=>{
-  expect(adminNeedsMfa('admin','aal1',[],true)).toBe(true);expect(adminNeedsEnrollment('admin',[])).toBe(true);expect(adminNeedsEnrollment('visitor',[])).toBe(false);expect(adminNeedsEnrollment('admin',[{factor_type:'totp',status:'verified'}])).toBe(false);
-  const result=gatedAdminProfile({id:'synthetic',role:'admin',username:'admin',avatar_path:'private',settings:{},must_change_password:false},true);expect(result).toMatchObject({admin_mfa_required:true,admin_mfa_enrollment_required:true});expect(result).not.toHaveProperty('avatar_path');expect(result).not.toHaveProperty('settings');
- });
  it.each([0,.4,.99])('pads short and long account failure paths to independent target %s',async(random)=>{
   const target=loginFailureTarget(random),short=vi.fn().mockResolvedValue(undefined),long=vi.fn().mockResolvedValue(undefined);
   await padLoginFailure(100,target,()=>200,short);await padLoginFailure(100,target,()=>450,long);

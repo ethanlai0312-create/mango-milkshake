@@ -6,7 +6,6 @@ const uploadPrefix='/storage/v1/object/upload/sign/mango-private/';
 const downloadPrefix='/storage/v1/object/sign/mango-private/';
 const authPrefix='/auth/v1/';
 const uuid='[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
-const mfaFactorRoute=new RegExp('^'+authPrefix+'factors/'+uuid+'/(challenge|verify)$','i');
 const objectPath=new RegExp('^'+uuid+'/(?:'+uuid+'|converted)/[^/]+$','iu');
 const signature=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u;
 const jsonLimit=2_000_000;
@@ -27,7 +26,7 @@ export function backendRoute(path,query,method){
  if(path===apiPath&&method==='POST')return 'api';
  if(path===authPrefix+'user'&&method==='GET')return 'auth';
  if(path===authPrefix+'token'&&method==='POST'&&query.getAll('grant_type').length===1&&query.get('grant_type')==='refresh_token')return 'auth';
- if(method==='POST'&&(path===authPrefix+'logout'||path===authPrefix+'factors'||mfaFactorRoute.test(path)))return 'auth';
+ if(method==='POST'&&path===authPrefix+'logout')return 'auth';
  if(method==='PUT'&&safeObjectPath(path,uploadPrefix)&&query.getAll('token').length===1&&signature.test(query.get('token')))return 'upload';
  if(['GET','HEAD'].includes(method)&&safeObjectPath(path,downloadPrefix)&&query.getAll('token').length===1&&signature.test(query.get('token')))return 'download';
  if(path===tusPath&&method==='POST')return 'tus-create';

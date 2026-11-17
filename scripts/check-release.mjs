@@ -15,8 +15,7 @@ for(const [,name,password,storedRole] of demo.matchAll(/\('([a-z_ ]+)','([a-z_ ]
  const role=storedRole==='admin'?'primary admin':storedRole==='secondary_admin'?'secondary admin':storedRole==='visitor'?'user':storedRole;assert.equal(name,role);assert.equal(password,role);assert(readme.includes(`| ${role} | ${name} | ${name} | ${password} |`),'Document every demo role');
 }
 assert(demo.includes('values(user_id,item.username,item.username,item.account_role'),'Demo nickname and login ID must equal the role name');
-assert(readme.includes('https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2'));
-assert(readme.includes('https://apps.apple.com/app/google-authenticator/id388497605'));
+assert(!readme.includes('管理員雙重驗證器'),'Administrator TOTP guide must be removed');
 const files=execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
 for(const path of files){
  assert(!/(?:^|\/)(?:uploads|backups|logs|outputs|work|test-results)(?:\/|$)|\.(?:dump|db|sqlite|csv|docx|pdf|key|pem|pfx)$/i.test(path),'Data file must not be published: '+path);
