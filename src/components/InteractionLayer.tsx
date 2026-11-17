@@ -13,12 +13,12 @@ export function InteractionLayer(){
  const closeTimer=useRef<number|undefined>(undefined);
  useEffect(()=>subscribeDialogs(r=>{opener.current=document.activeElement as HTMLElement;settled.current=false;setValue(r.initial);setRequest(r);}),[]);
  useEffect(()=>{if(request){dialog.current?.showModal();(request.kind==='prompt'?dialog.current?.querySelector('textarea'):dialog.current?.querySelector<HTMLElement>('[data-initial-focus]'))?.focus();const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old;};}},[request]);
- function close(result:any){if(!request||settled.current)return;settled.current=true;request.resolve(result);setClosing(true);const finish=()=>{dialog.current?.close();setClosing(false);setRequest(null);opener.current?.focus();queueMicrotask(finishDialog);};if(shouldReduceMotion())finish();else closeTimer.current=window.setTimeout(finish,180);}
+ function close(result:any){if(!request||settled.current)return;settled.current=true;setClosing(true);const finish=()=>{dialog.current?.close();request.resolve(result);setClosing(false);setRequest(null);opener.current?.focus();queueMicrotask(finishDialog);};if(shouldReduceMotion())finish();else closeTimer.current=window.setTimeout(finish,180);}
  useEffect(()=>{
   if(!request)return;
   const reset=()=>{
    window.clearTimeout(closeTimer.current);
-   if(!settled.current)request.resolve(request.kind==='prompt'?null:false);
+   request.resolve(request.kind==='prompt'?null:false);
    settled.current=true;
    dialog.current?.close();
    setValue('');setRequest(null);setClosing(false);

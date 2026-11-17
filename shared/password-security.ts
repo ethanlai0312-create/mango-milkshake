@@ -23,7 +23,8 @@ export function localNewPasswordError(password:string,username:string){
  return null;
 }
 
-// Allow a30-person class behind one NAT; per-username login limit remains10/15min.
+// Allow a class behind one NAT. Login also has an IP/device/account-pair budget
+// and bounded global failed-account backoff, rather than an account-wide lockout.
 export function authIpLimit(action: string): number {
  return action==='login'?120:action==='register'?40:4;
 }

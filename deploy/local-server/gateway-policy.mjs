@@ -72,10 +72,8 @@ export const cspEnforced=[
  "style-src 'self' 'unsafe-inline'",
  "img-src 'self' https: data: blob:","media-src 'self' blob:",
  "font-src 'self'","connect-src 'self'","worker-src 'self'",
+ "require-trusted-types-for 'script'","trusted-types dompurify mango-worker","report-uri /_csp_report",
 ].join('; ');
-
-// The rich-text editor still uses sanitized string sinks. Measure before enforcing.
-export const cspReportOnly="require-trusted-types-for 'script'; report-uri /_csp_report";
 
 const disabledFeatures=['camera','microphone','geolocation','display-capture','payment','usb','serial','hid','bluetooth','midi','xr-spatial-tracking'];
 const permissionsPolicy=disabledFeatures.map(feature=>`${feature}=()`).join(', ');
@@ -87,13 +85,16 @@ export function staticBrowserHeaders(asset){
   'Referrer-Policy':'no-referrer',
  };
  if(asset==='/index.html')Object.assign(headers,{
+  // The shell contains no private records. Revalidate it and forbid edge HTML
+  // transformations, including automatic analytics script injection.
+  'Cache-Control':'public, no-cache, no-transform',
   'X-Frame-Options':'DENY',
   'Cross-Origin-Opener-Policy':'same-origin',
   'Permissions-Policy':permissionsPolicy,
   'Content-Security-Policy':cspEnforced,
-  'Content-Security-Policy-Report-Only':cspReportOnly,
  });
  if(asset==='/sw.js')headers['Content-Security-Policy']="default-src 'none'; script-src 'self'; connect-src 'self'";
+ if(asset==='/.well-known/security.txt')Object.assign(headers,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'public, max-age=3600, no-transform'});
  return headers;
 }
 
@@ -108,6 +109,7 @@ export function validClientAddress(value){return typeof value==='string'&&isIP(v
 
 export function publicStaticFile(path){
  if(path==='/'||path==='/index.html')return '/index.html';
+ if(path==='/.well-known/security.txt')return path;
  if(path==='/sw.js')return path;
  if(/^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2?|ttf|svg|png|ico)$/u.test(path))return path;
 }

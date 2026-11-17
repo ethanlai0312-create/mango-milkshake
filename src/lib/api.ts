@@ -1,4 +1,5 @@
 import {authTransport,deadline} from './deadline';
+import {createCookieAuthClient} from './cookie-auth';
 import {createClient} from '@supabase/supabase-js';
 import {resolveBackendUrl} from '../../shared/backend-url';
 import {captureReadCacheScope,getReadCacheRole,retainMedia,invalidateReadCache,rememberRead,isReadCacheAction} from './read-cache';
@@ -7,7 +8,8 @@ import {acceptIdleDeadline,isIdleExpired,markIdleExpired,sessionId,SESSION_EXPIR
 import {privateMediaUrl} from './media-url';
 import {serializeApiRequest} from '../../shared/api-input';
 export const supabaseUrl=resolveBackendUrl(import.meta.env.VITE_SUPABASE_URL,window.location.origin);
-export const supabase=createClient(supabaseUrl,import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:authTransport(supabaseUrl+'/auth/v1',fetch.bind(globalThis))}});
+export const cookieAuth=import.meta.env.MODE!=='test';
+export const supabase=cookieAuth?createCookieAuthClient(supabaseUrl,import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY):createClient(supabaseUrl,import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:authTransport(supabaseUrl+'/auth/v1',fetch.bind(globalThis))}});
 let sessionRequest:ReturnType<typeof supabase.auth.getSession>|undefined;
 export function readSession(){if(!sessionRequest)sessionRequest=deadline(supabase.auth.getSession().then(result=>{if(result.error)throw result.error;return result;}),12000,'登录状态检查超时，请重试；现有登录信息已保留。').finally(()=>{sessionRequest=undefined;});return sessionRequest;}
 export let serverOffset=0;
@@ -32,7 +34,7 @@ export async function api<T=any>(action:string,p:Record<string,any>={},expectedS
  const timeout=timeoutMs?setTimeout(()=>controller.abort(),timeoutMs):undefined;
  const request=(async()=>{
   const before=Date.now();
-  const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...session?{Authorization:`Bearer ${session.access_token}`}:{ }},body});
+  const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',credentials:'same-origin',signal:controller.signal,headers:{'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...cookieAuth?{'X-Mango-Requested-With':'1'}:session?{Authorization:`Bearer ${session.access_token}`}:{ }},body});
   if(response.status===401||response.status===403)invalidateReadCache(session?.user.id);
   if(testerFile&&response.ok){const data=await response.blob();const mime=response.headers.get('x-mango-file-mime')??'application/octet-stream';const safe=/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm))$/.test(mime)?mime:'application/octet-stream';const signedUrl=retainMedia(cacheScope,URL.createObjectURL(new Blob([data],{type:safe})));return {signedUrl,mime,name:decodeURIComponent(response.headers.get('x-mango-file-name')??'file')} as T;}
   const payload=await response.json().catch(()=>{throw new ApiError(`服务暂不可用（${response.status}），请稍后重试`,response.status);});

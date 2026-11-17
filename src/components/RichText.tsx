@@ -1,7 +1,6 @@
 import {useLayoutEffect,useRef} from 'react';
-import DOMPurify from 'dompurify';
 import katex from 'katex';
-import {sanitizeRichText} from '../../shared/rich-text';
+import {richHTMLString,richHTMLFragment,trustedRichHTML} from '../lib/trusted-types';
 import {promptText,showMessage} from '../lib/dialogs';
 import {Button} from '../ui/Button';
 
@@ -20,8 +19,8 @@ export function renderFormula(tex:string,throwOnError=false):string{
  return katex.renderToString(tex,{...formulaOptions,throwOnError});
 }
 
-const browserHTML=(html:string)=>DOMPurify.sanitize(sanitizeRichText(html));
-const browserFragment=(html:string)=>DOMPurify.sanitize(sanitizeRichText(html),{RETURN_DOM_FRAGMENT:true});
+const browserHTML=richHTMLString;
+const browserFragment=richHTMLFragment;
 export function SafeHTML({html}:{html:string}){
  const ref=useRef<HTMLDivElement>(null);
  useLayoutEffect(()=>{ref.current?.replaceChildren(browserFragment(html));},[html]);
@@ -46,7 +45,9 @@ export function RichText({value,onChange,label='题干'}:{value:string;onChange:
   }
   // Keep the browser's undo history. Only fixed toolbar commands reach this API,
   // and HTML insertions pass through the same sanitizers as saved content.
-  document.execCommand(cmd,false,cmd==='insertHTML'?browserHTML(arg??''):arg);
+  // execCommand's TypeScript signature predates TrustedHTML. Keep the object
+  // intact at runtime so enforced Trusted Types can validate this insertion.
+  document.execCommand(cmd,false,cmd==='insertHTML'?trustedRichHTML(arg??'') as unknown as string:arg);
   change();
  };
  const applyFormula=async()=>{

@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {readSession,supabaseUrl} from './api';
+import {readSession,supabaseUrl,cookieAuth} from './api';
 import {ApiError} from './api-error';
 import {deadline} from './deadline';
 import {invalidateReadCache} from './read-cache';
@@ -14,7 +14,7 @@ export const PRESENCE_REQUEST_TIMEOUT_MS=8000;
 export function startAccountPresence(userId:string,publish:(status:PresenceConnection)=>void){
  const tab=crypto.randomUUID();let sequence=0,token='',stopped=false,inFlight=false,departed=false;
  let lastConfirmed:number|undefined,controller:AbortController|undefined;
- const headers=()=>({'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+token});
+ const headers=()=>({'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...cookieAuth?{'X-Mango-Requested-With':'1'}:{Authorization:'Bearer '+token}});
  const stale=()=>lastConfirmed===undefined||Date.now()-lastConfirmed>PRESENCE_TIMEOUT_SECONDS*1000;
  const send=async(request:AbortController)=>{
   const {data:{session}}=await readSession();
@@ -22,7 +22,7 @@ export function startAccountPresence(userId:string,publish:(status:PresenceConne
   if(!session||session.user.id!==userId)throw new ApiError('请重新登录',401);
   const id=sessionId(session);
   if(id&&isIdleExpired(id))throw new ApiError('请重新登录',401);
-  token=session.access_token;
+  token=cookieAuth?'cookie':session.access_token;
   const before=Date.now();
   const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',signal:request.signal,headers:headers(),body:serializeApiRequest('presence',{tab,sequence:++sequence,online:true})});
   if(response.status===401||response.status===403)invalidateReadCache(userId);

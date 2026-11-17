@@ -1,6 +1,7 @@
 import {roleAllows,testerExamSummary,testerExamView,testerSharedFile} from '../../../shared/roles.ts';
 import {createDeliveryMap,deliveredExam,canonicalAnswers,publicAttempt} from '../../../shared/delivery.ts';
-import {rejectCompromisedPassword,passwordError,authIpLimit} from '../../../shared/password-security.ts';
+import {passwordError,localNewPasswordError,authIpLimit} from '../../../shared/password-security.ts';
+import {adminNeedsMfa,adminNeedsEnrollment,gatedAdminProfile,loginFailureTarget,padLoginFailure,inviteUsable,publicConfiguration,retryAfterSeconds} from '../../../shared/auth-security.ts';
 import {validateAnswers} from '../../../shared/answers.ts';
 import {bindDrawingAnswers,bindDrawingQuestions} from '../../../shared/drawing-question.ts';
 import {buildManualReview,releasedDrawingReferences} from '../../../shared/manual-review.ts';
@@ -30,10 +31,7 @@ async function sessionDeadline(token:string,userId:string,activity:boolean):Prom
 }
 const sensitiveAdminActions=new Set(['setUserRole','purgeAccount','purgeExam','userState','resetPassword','saveConfig']);
 function requiresAdminMfa(role:string,aal:unknown,factors:readonly {factor_type:string;status:string}[]|undefined){
- return role==='admin'&&aal!=='aal2'&&(
-  Deno.env.get('MANGO_ADMIN_MFA_REQUIRED')==='true'||
-  (factors??[]).filter(f=>f.factor_type==='totp'&&f.status==='verified').length>=2
- );
+ return adminNeedsMfa(role,aal,factors,true);
 }
 async function requireFreshAdminFactor(token:string,userId:string,sessionId:string){
  const {aal,amr}=decodeJwt(token);
@@ -54,8 +52,10 @@ async function storedHeader(path:string){
 }
 async function sha(s:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function email(username:string){return `${await sha(username)}@accounts.mango.invalid`;}
-async function limited(key:string,limit:number,seconds:number){if(!check(await db.rpc('api_rate_limit',{p_key:key,p_limit:limit,p_seconds:seconds})))fail('请求过于频繁，请稍后重试',429);}
+class RequestRateLimitError extends PublicApiError{constructor(readonly seconds:number){super('请求过于频繁，请稍后重试',429);}}
+async function limited(key:string,limit:number,seconds:number){if(!check(await db.rpc('api_rate_limit',{p_key:key,p_limit:limit,p_seconds:seconds})))throw new RequestRateLimitError(seconds);}
 function password(p:string){const error=passwordError(p);if(error)fail(error);}
+function newPassword(p:string,name:string){password(p);const error=localNewPasswordError(p,name);if(error)fail(error);}
 function username(n:string){const v=normalizeUsername(String(n??''));if(!/^[\p{L}\p{N}_-]{2,32}$/u.test(v))fail('账号名需为2–32位字母、汉字、数字或下划线');return v;}
 async function mutate(actor:string,action:string,data:any){return check(await db.rpc('api_audited_mutation',{p_actor:actor,p_action:action,p_data:data}));}
 async function fileAllowed(f:any,profile:any){if(profile.role==='tester'&&f.owner_id!==profile.id){
@@ -85,6 +85,7 @@ async function converterUrl(){const row=check(await db.from('system_config').sel
 async function wakeConverter(){const base=await converterUrl();if(base){const wake=fetch(base+'/wake',{signal:AbortSignal.timeout(5000)}).then(()=>{}).catch(()=>{});(globalThis as any).EdgeRuntime?.waitUntil(wake);}}
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response(null,{headers});
+ let loginFailureStarted:number|undefined;let failureTarget=0;
  try{
  if(req.method!=='POST')fail('只支持POST',405);
  if(req.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json')fail('仅支持 JSON 请求',415);
@@ -98,10 +99,10 @@ Deno.serve(async req=>{
  const ip=req.headers.get('x-forwarded-for')?.split(',')[0]??'unknown';
  if(['workerClaim','workerFinish','workerHealth'].includes(action)){
   const workerToken=req.headers.get('authorization')?.replace(/^Bearer /i,'')??'';
+  if(!/^mw_[A-Za-z0-9_-]{32,256}$/.test(workerToken))fail('需要工作器身份验证',401);
   await limited('worker:'+await sha(ip),60,60);
-  const testOnly=!workerToken.startsWith('mw_');
-  if(testOnly)fail('请配置独立的转换工作器令牌',403);
-  else if(!check(await db.rpc('api_worker_key_valid',{p_digest:await sha(workerToken)})))fail('未经授权的生产运行器',403);
+  const testOnly=false;
+  if(!check(await db.rpc('api_worker_key_valid',{p_digest:await sha(workerToken)})))fail('需要工作器身份验证',401);
   let result:any=null;
   if(action==='workerHealth'){result={ok:true,test_only:testOnly};}else if(action==='workerClaim'){if(!testOnly){check(await db.rpc('api_expire_uploads',{}));await drainStorageCleanup();}let expiredQuery=db.from('conversion_jobs').select('*').lt('expires_at',new Date().toISOString());if(testOnly){const profiles=check(await db.from('profiles').select('id').eq('is_test_account',true));expiredQuery=expiredQuery.in('user_id',profiles.map((p:any)=>p.id));}const expired=check(await expiredQuery.limit(100));for(const old of expired){if(old.status==='running'&&Date.parse(old.lease_until)>Date.now())continue;await removeConversion(old,null,!testOnly);}
    const job=check(await db.rpc('api_claim_conversion_scoped',{p_test_only:testOnly}));
@@ -117,18 +118,29 @@ Deno.serve(async req=>{
  }
  if(action==='health')return new Response(JSON.stringify({ok:true,api:'v1',server_time:new Date().toISOString()}),{headers});
  if(['login','register','bootstrap'].includes(action)){
+ if(action==='bootstrap'&&check(await db.from('profiles').select('id').eq('role','admin').limit(1)).length)fail('接口不存在',404);
  await limited('auth:aggregate:'+action,action==='login'?120:action==='register'?45:5,60);
  await limited(`ip:${await sha(ip)}:${action}`,authIpLimit(action),900);
- const name=username(p.username);if(action!=='login'){password(p.password);await rejectCompromisedPassword(p.password);}
+ const rawDevice=req.headers.get('x-mango-device'),device=rawDevice&&/^[A-Za-z0-9_-]{16,128}$/.test(rawDevice)?rawDevice:undefined;if(device)await limited('auth-device:'+await sha(device)+':'+action,action==='login'?40:10,900);
+ if(action==='register'){
+  const invite=check(await db.from('invites').select('revoked,expires_at,used,max_uses').eq('digest',await sha(String(p.invite).trim())).maybeSingle());
+  if(!inviteUsable(invite))fail('密令无效、过期或已用尽');
+ }
+ if(action==='login'){loginFailureStarted=performance.now();const entropy=new Uint32Array(1);crypto.getRandomValues(entropy);failureTarget=loginFailureTarget(entropy[0]/0xffffffff);}
+ let name:string;try{name=username(p.username);}catch(error){if(action!=='login')throw error;check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));fail('账号或密码错误',401);}
+ if(action!=='login')newPassword(p.password,name);
  if(action==='login'){
- await limited(`login:${await sha(name)}`,10,900);
+ await limited(`login-pair:${await sha(name+'\u0000'+ip+'\u0000'+(device??'unavailable'))}`,10,300);
+ const profileExists=check(await db.from('profiles').select('id').eq('username',name).maybeSingle());
+ if(!profileExists){check(await db.rpc('api_auth_dummy_password',{p_password:p.password}));if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(name),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
  const client=createClient(url,secret,{auth:{persistSession:false}});
  const result=await client.auth.signInWithPassword({email:await email(name),password:p.password});
- if(result.error)fail('账号或密码错误',401);
+ if(result.error){if(!check(await db.rpc('api_rate_limit',{p_key:'login-failure:'+await sha(name),p_limit:30,p_seconds:900})))failureTarget=Math.max(failureTarget,1500);fail('账号或密码错误',401);}
  const profile=check(await db.from('profiles').select('*').eq('id',result.data.user.id).single());
  const idleExpiresAt=await sessionDeadline(result.data.session.access_token,profile.id,false);
  if(!profile.active)fail('账号已停用',403);check(await db.from('profiles').update({last_login_at:new Date().toISOString()}).eq('id',profile.id));
- return new Response(JSON.stringify({session:result.data.session,profile:{...profile,admin_mfa_required:requiresAdminMfa(profile.role,'aal1',result.data.user.factors)},idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
+ const mfaRequired=requiresAdminMfa(profile.role,'aal1',result.data.user.factors);
+ return new Response(JSON.stringify({session:result.data.session,profile:mfaRequired?gatedAdminProfile(profile,adminNeedsEnrollment(profile.role,result.data.user.factors)):{...profile,admin_mfa_required:false},idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
  }
  if(action==='bootstrap'){
  if(name!=='admin')fail('保留账号');
@@ -151,7 +163,7 @@ Deno.serve(async req=>{
  await limited(`user:${auth.data.user.id}`,240,60);
  const sessionId=decodeJwt(token).session_id as string;const idleExpiresAt=await sessionDeadline(token,auth.data.user.id,action==='sessionActivity');const me=check(await db.from('profiles').select('*').eq('id',auth.data.user.id).single());if(!me.active)fail('账号已停用',403);
  const mfaRequired=requiresAdminMfa(me.role,decodeJwt(token).aal,auth.data.user.factors);
- if(mfaRequired&&!['me','sessionStatus','sessionActivity','adminMfaFactors'].includes(action))fail('管理员需要完成双重验证',403);
+ if(mfaRequired&&!['me','sessionStatus','sessionActivity','adminMfaFactors'].includes(action)&&!(action==='changePassword'&&me.must_change_password&&adminNeedsEnrollment(me.role,auth.data.user.factors)))fail('管理员需要完成双重验证',403);
  if(['testerExam','testerFile','getExam','attempt','startAttempt','leaderboard','historyQuery','history','files','exams','fileUrl','conversionDownload'].includes(action)){
   await limited('read:'+me.id+':'+action,action==='fileUrl'?120:action==='startAttempt'?12:45,60);
  }
@@ -168,9 +180,9 @@ Deno.serve(async req=>{
    .map(f=>({id:f.id,name:f.friendly_name||'验证器'}));
   break;
  }
- case 'me':data=mfaRequired?{id:me.id,role:me.role,username:me.username,admin_mfa_required:true}:{...me,admin_mfa_required:false};break;
+ case 'me':data=mfaRequired?gatedAdminProfile(me,adminNeedsEnrollment(me.role,auth.data.user.factors)):{...me,admin_mfa_required:false};break;
  case 'settings':{const existing=check(await db.from('profiles').select('avatar,avatar_path').eq('id',me.id).single());p.avatar=existing.avatar;p.avatar_path=existing.avatar_path;if(p.avatar_path){const photo=check(await db.from('files').select('id').eq('id',p.avatar_path).eq('owner_id',me.id).eq('purpose','avatar').eq('verified',true).maybeSingle());if(!photo)fail('头像必须是本人已验证的图片');}const settings={theme:['light','dark','system'].includes(p.settings?.theme)?p.settings.theme:'system',language:['zh-CN','zh-TW'].includes(p.settings?.language)?p.settings.language:'zh-CN'};const avatar={color:/^#[0-9a-f]{6}$/i.test(p.avatar?.color)?p.avatar.color:'#ffbd45',expression:String(p.avatar?.expression??'smile').slice(0,20),hat:['none','cap','bow','flower','headphones'].includes(p.avatar?.hat)?p.avatar.hat:'none',glasses:!!p.avatar?.glasses};data=check(await db.rpc('api_update_settings',{p_user:me.id,p_settings:settings,p_avatar:avatar,p_photo:p.avatar_path??null}));break;}
- case 'changePassword':{await limited('reauth:'+me.id,10,900);password(p.newPassword);await rejectCompromisedPassword(p.newPassword);const c=createClient(url,secret,{auth:{persistSession:false}});const re=await c.auth.signInWithPassword({email:await email(me.username),password:p.currentPassword});if(re.error)fail('当前密码错误',401);const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:me.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:false}));check(await db.auth.admin.updateUserById(me.id,{password:p.newPassword,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));const fresh=check(await c.auth.signInWithPassword({email:await email(me.username),password:p.newPassword}));data={ok:true,session:fresh.session};break;}
+ case 'changePassword':{await limited('reauth:'+me.id,10,900);newPassword(p.newPassword,me.username);const c=createClient(url,secret,{auth:{persistSession:false}});const re=await c.auth.signInWithPassword({email:await email(me.username),password:p.currentPassword});if(re.error)fail('当前密码错误',401);const nonce=crypto.randomUUID();check(await db.rpc('api_prepare_password_change',{p_user:me.id,p_actor:me.id,p_nonce_hash:await sha(nonce),p_force:false}));check(await db.auth.admin.updateUserById(me.id,{password:p.newPassword,app_metadata:{provisioned:'mango-v1',password_change_nonce:nonce}}));const fresh=check(await c.auth.signInWithPassword({email:await email(me.username),password:p.newPassword}));data={ok:true,session:fresh.session};break;}
  case 'presence':{if(!validPresenceUpdate(p.tab,p.sequence,p.online))fail('在线状态参数无效');check(await db.rpc('api_presence_touch',{p_user:me.id,p_session:sessionId,p_tab:p.tab,p_sequence:p.sequence,p_online:p.online}));data={ok:true};break;}
  case 'userPresence':{admin();if(!Array.isArray(p.ids)||p.ids.length>50||!p.ids.every(validPresenceId))fail('账号列表无效');data=check(await db.rpc('api_account_presence',{p_users:p.ids}));break;}
  case 'users':{admin();const profiles=check(await db.from('profiles').select('id,username,active,role,created_at,last_login_at,password_changed_at').order('created_at',{ascending:false}).range(p.offset??0,(p.offset??0)+49));const presence=check(await db.rpc('api_account_presence',{p_users:profiles.map((u:any)=>u.id)}));data=profiles.map((u:any)=>({...u,...presence.find((s:any)=>s.user_id===u.id)}));break;}
@@ -226,9 +238,9 @@ Deno.serve(async req=>{
  case 'conversionDownload':{const j=check(await db.from('conversion_jobs').select('*').eq('id',p.id).eq('user_id',me.id).eq('status','completed').maybeSingle());if(!j)fail('转换记录不存在或无权限',404);if(Date.parse(j.expires_at)<Date.now())fail('文件已到期');data=check(await db.storage.from('mango-private').createSignedUrl(j.output_path,60,{download:(check(await db.from('files').select('name').eq('id',j.input_file_id).single()).name.replace(/\.[^.]+$/,'')||'converted')+'.'+(j.target==='png'?'zip':j.target)}));break;}
  case 'logs':admin();data=check(await db.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(100));break;
  case 'saveConfig':admin();if(p.key==='converter_url'){if(typeof p.value!=='string'||p.value!==''&&!/^https:\/\/[a-z0-9-]+\.onrender\.com$/.test(p.value))fail('需要Render HTTPS服务地址');}else if(p.key!=='registration_enabled'||typeof p.value!=='boolean')fail('配置无效');data=await mutate(me.id,'saveConfig',{key:p.key,value:p.value});break;
- case 'config':admin();data=check(await db.from('system_config').select('*'));break;
+ case 'config':admin();data=publicConfiguration(check(await db.from('system_config').select('*')));break;
  default:fail('接口不存在',404);
  }
  return new Response(JSON.stringify({data,idle_expires_at:idleExpiresAt,server_time:new Date().toISOString()}),{headers});
- }catch(e){const result=publicError(e);return new Response(JSON.stringify({error:result.error,code:result.code}),{status:result.status,headers});}
+ }catch(e){const result=publicError(e);if(loginFailureStarted!==undefined&&result.status===401)await padLoginFailure(loginFailureStarted,failureTarget);return new Response(JSON.stringify({error:result.error,code:result.code}),{status:result.status,headers:{...headers,...result.status===429?{'Retry-After':e instanceof RequestRateLimitError?retryAfterSeconds(e.seconds):'60'}:{}}});}
 });

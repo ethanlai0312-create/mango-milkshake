@@ -10,6 +10,8 @@ const updates = new EventTarget();
 
 export function sessionId(session:Session|null|undefined):string|undefined{
  try {
+  const cookieId=(session as unknown as {session_id?:string})?.session_id;
+  if(typeof cookieId==='string'&&/^[0-9a-f-]{36}$/i.test(cookieId))return cookieId;
   const part=session?.access_token.split('.')[1];
   const id=part&&JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/'))).session_id;
   if(typeof id==='string'&&/^[0-9a-f-]{36}$/i.test(id))return id;

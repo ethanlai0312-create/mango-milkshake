@@ -1,5 +1,7 @@
 // Windows gateway: only the app, Auth and private Storage reach LAN clients.
 import http from 'node:http';
+import {createSessionBridge} from './session-bridge.mjs';
+import {transportDecision,hstsValue,stripInternalResponseHeaders} from './ingress-policy.mjs';
 import https from 'node:https';
 import {timingSafeEqual} from 'node:crypto';
 import {readFile,realpath,stat,statfs} from 'node:fs/promises';
@@ -50,6 +52,7 @@ const hop=new Set(['connection','keep-alive','proxy-authenticate','proxy-authori
 const localAddress=address=>address==='127.0.0.1'||address==='::1'||address==='::ffff:127.0.0.1';
 const consumeIngress=createIngressBudget();
 const uploadGrants=createUploadGrants();
+const browserSessions=createSessionBridge({upstreamOrigin:upstreamOrigin.origin,uploadGrants,rewriteUrl});
 function admit(req,res,route,tunneled){
  const client=tunneled?validClientAddress(validRelay(req)?req.headers['x-mango-client-ip']:req.headers['cf-connecting-ip']):undefined;
  const budget=consumeIngress(route,client??req.socket.remoteAddress??'unknown');
@@ -95,6 +98,12 @@ function rewriteUrl(value,origin){
 }
 async function proxy(req,res,origin,target,tunneled=false){
  const path=target.pathname.slice('/backend'.length);
+ if(path==='/session'||path==='/functions/v1/api'||path.startsWith('/auth/v1/')){
+  if(req.headers.origin&&req.headers.origin!==origin)return fail(res,403,'请求来源不受支持');
+  if(!admit(req,res,path==='/functions/v1/api'?'api':'auth',tunneled))return;
+  const client=tunneled?validClientAddress(validRelay(req)?req.headers['x-mango-client-ip']:req.headers['cf-connecting-ip']):undefined;
+  return browserSessions.handle(req,res,{path,origin,secure:new URL(origin).protocol==='https:',client:client??req.socket.remoteAddress??'unknown'});
+ }
  const route=backendRoute(path,target.searchParams,req.method);
  if(!route)return fail(res,404,'此后端接口不对外开放');
  if(!allowsBrowserRequest(route,req.headers))return fail(res,403,'请求来源不受支持');
@@ -127,6 +136,8 @@ async function proxy(req,res,origin,target,tunneled=false){
  headers['x-forwarded-for']=client??req.socket.remoteAddress;headers['x-forwarded-proto']=new URL(origin).protocol.slice(0,-1);
  const upstream=http.request({hostname:upstreamOrigin.hostname,port:upstreamOrigin.port,path:path+target.search,method:req.method,headers},response=>{
   const out=Object.fromEntries(Object.entries(response.headers).filter(([key])=>!hop.has(key)));
+  stripInternalResponseHeaders(out);
+  if(new URL(origin).protocol==='https:')out['strict-transport-security']=hstsValue();
   delete out['access-control-allow-origin'];
   out['cache-control']='no-store';out['x-content-type-options']='nosniff';
   out['cross-origin-resource-policy']='same-origin';out['referrer-policy']='no-referrer';
@@ -169,7 +180,9 @@ async function serve(req,res,secure){
  if(!tunneled&&(!hosts.has(target.hostname.toLowerCase())||target.username||target.password||Number(target.port||(secure?443:80))!==req.socket.localPort))return fail(res,421,'未配置此访问主机名或端口');
  const origin=target.origin,path=target.pathname;
  if(rawPath!==path)return fail(res,400,'请求地址无效');
- if(tunneled)res.setHeader('Strict-Transport-Security','max-age=604800');
+ const decision=transportDecision({encrypted:secure,tunneled,remoteAddress:req.socket.remoteAddress,headers:req.headers,method:req.method,rawUrl:req.url,origin,httpsPort:config.httpsPort});
+ if(decision.status){if(decision.location){res.writeHead(decision.status,{Location:decision.location,'Cache-Control':'no-store'});res.end();return;}return fail(res,decision.status,'请使用HTTPS访问');}
+ if(decision.secure&&tunneled)res.setHeader('Strict-Transport-Security',hstsValue());
  if(path==='/_local_health'){
   if(tunneled||!localAddress(req.socket.remoteAddress))return fail(res,404,'文件不存在');
   if(req.method!=='GET')return fail(res,405,'只支持读取');
@@ -193,7 +206,7 @@ async function serve(req,res,secure){
   res.end(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>芒果学社连接检查</title><style>body{font:16px system-ui;max-width:760px;padding:24px;margin:auto;line-height:1.8}code{overflow-wrap:anywhere}a{display:block;margin:18px 0}</style><h1>芒果学社连接检查</h1><p>已连接到这台电脑的网站入口。</p><p id="secure"></p><p id="api">正在检查本机后端…</p><a href="${tunneled?origin:`https://${target.hostname}:${config.httpsPort}`}/">打开 HTTPS 学习平台</a>${tunneled?'':'<a href="/_server_certificate.cer">下载本次局域网测试的公钥证书</a>'}<p>${tunneled?'此入口使用外网HTTPS证书。网站业务数据仍需要账号登录。':'这是自签名局域网测试证书。浏览器可能要求由你本人确认或安装信任。下载的文件仅包含公钥，不包含服务器私钥。'}</p><script>document.getElementById('secure').textContent='浏览器安全上下文：'+window.isSecureContext;fetch('/_api_health').then(r=>{if(!r.ok)throw Error();return r.json()}).then(d=>{document.getElementById('api').textContent=d.ok?'本机数据库/API入口正常':'后端响应异常'}).catch(()=>{document.getElementById('api').textContent='后端尚未连接，请记录此结果';});</script></html>`);return;
  }
  // Keep HTTP loopback compatible. LAN users use TLS for passwords and secure browser APIs.
- if(!secure&&!localAddress(req.socket.remoteAddress)){res.writeHead(307,{Location:`https://${target.hostname}:${config.httpsPort}${req.url}`,'Cache-Control':'no-store'});res.end();return;}
+
  if(path.startsWith('/backend/'))return proxy(req,res,origin,target,tunneled);
  if(!['GET','HEAD'].includes(req.method))return fail(res,405,'只支持GET/HEAD');
  const asset=publicStaticFile(path);

@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v01.02.001**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v02.00.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -30,12 +30,16 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 試卷建立、編輯、JSON/CSV 匯入匯出、預覽、審核、版本與回收站；多種題型、計時、自動保存、本機草稿、評分及人工批改；幾何工具、初始圖形、參考作圖和步驟回放；頭像、設定、排行榜和在線狀態；共享檔案、續傳及私人文件轉換；帳號管理、註冊密令、操作日誌、管理員雙重驗證；響應式介面、鍵盤操作、減少動態效果及離線快取。
 
+## v2 安全與部署
+
+[完整安全更新與部署說明](docs/security-v2.md)。v2 使用同源 HttpOnly Cookie 網關，前端 URL 設為 /backend，不能直接連到公開 GoTrue。管理員首次使用需綁定 TOTP，此後每次登入均需驗證。更新後需重新登入，原草稿保留。
+
 ## 前端啟動
 
 1. 安裝 Node.js 24 與 pnpm 11.25。
 2. 執行 pnpm install --frozen-lockfile。
 3. 複製 .env.example 為 .env.local，填入自己的後端 URL 與公開客戶端金鑰。管理金鑰不可放入前端。
-4. 執行 pnpm dev；pnpm typecheck 檢查型別；pnpm build 建置正式靜態檔案。
+4. 先啟動本機網關（預設127.0.0.1:5178），再執行 pnpm dev；pnpm typecheck 檢查型別；pnpm build 建置正式靜態檔案。
 
 登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
 
@@ -45,7 +49,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 部署者可使用 deploy/local-server 的入口、瀏覽器策略、流量預算和上傳授權模組。複製 lan-config.example.json 為本機 lan-config.json，調整路徑、允許主機及後端入口後執行 node deploy/local-server/lan-gateway.mjs。入口保留 Windows/WSL 磁碟檢查，其他平台需調整該檢查；study.example.com 是範例域名。憑證、通道與私人設定自行配置。
 
-services/converter 包含轉換器及隔離程式。由專案根目錄以 services/converter/Dockerfile.service 建置服務，自行設定 MANGO_API 為 HTTPS API 位址和私人的 MANGO_WORKER_TOKEN。shared/password-security.ts 同時提供外洩密碼服務檢查及本機政策；完全離線部署需自行整合本機 adapter。本倉庫不帶原環境的私人部署 adapter。
+services/converter 包含轉換器及隔離程式。由專案根目錄以 services/converter/Dockerfile.service 建置服務，自行設定 MANGO_API 為 HTTPS API 位址和私人的 MANGO_WORKER_TOKEN。API 新密碼檢查已使用本機政策，不再呼叫外洩密碼雲端查詢；保留的相容 helper 不會在登入或改密時呼叫。本倉庫不帶原環境的私人部署 adapter。
 
 ## 發布邊界
 

@@ -30,7 +30,7 @@ export function AdminMfa({gate=false,onVerified}:{gate?:boolean;onVerified?:()=>
   {error&&<p role="alert">{error}</p>}
   {!loaded&&<Button onClick={()=>perform(reload)} disabled={busy}>重新读取验证器</Button>}
   {!gate&&loaded&&<p>已验证的验证器 {factors.length} 个。请在两个独立设备各绑定一个，以便恢复。</p>}
-  {!gate&&loaded&&!enrollment&&factors.length<2&&<Button disabled={busy} onClick={()=>perform(async()=>{
+  {loaded&&(!gate||factors.length===0)&&!enrollment&&factors.length<2&&<Button disabled={busy} onClick={()=>perform(async()=>{
    const {data,error}=await supabase.auth.mfa.enroll({
     factorType:'totp',issuer:'芒果学社',friendlyName:'芒果学社 '+new Date().toISOString(),
    });
@@ -54,7 +54,7 @@ export function AdminMfa({gate=false,onVerified}:{gate?:boolean;onVerified?:()=>
    <label>六位验证码<input value={code} onChange={event=>setCode(event.target.value)} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required/></label>
    <Button type="submit" className="primary" disabled={busy}>验证</Button>
   </form>}
-  {gate&&loaded&&!factor&&<p>此账号没有可用验证器，请通过服务器管理员恢复。</p>}
+  {gate&&loaded&&!factor&&<p>首次使用请先绑定验证器。完成六位验证码验证后，才能进入管理功能。</p>}
   {gate&&<Button disabled={busy} onClick={()=>perform(async()=>{
    const {error}=await supabase.auth.signOut({scope:'local'});
    if(error)throw error;
