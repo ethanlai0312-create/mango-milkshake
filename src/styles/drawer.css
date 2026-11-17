@@ -22,3 +22,5 @@
 .read-only-accounts th:last-child,.read-only-accounts td[data-label="操作"]{display:none!important}.read-only-accounts th:first-child{width:40%}.read-only-accounts th:nth-child(2){width:60%}
 
 .user-records.read-only-accounts td[data-label="操作"]:has(.actions:empty){display:none!important}
+
+@media(min-width:801px){.user-records .account-metadata small{word-break:keep-all}}
