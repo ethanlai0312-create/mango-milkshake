@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api} from '../lib/api';
+import {avatarPreview} from '../lib/avatar-cache';
 import './mango-avatar.css';
 
 /* The crown shares the fruit's warm outline and stays inside its 80-unit artboard. */
@@ -12,16 +13,26 @@ function Crown(){
 }
 
 export function Mango({profile,size=42}:{profile:any;size?:number}){
- const code=Number(profile?.avatar_code??0),[picture,setPicture]=useState({path:'',url:''});
- const photo=picture.path===profile?.avatar_path?picture.url:'';
+ const code=Number(profile?.avatar_code??0);
+ const desiredPath=profile?.avatar_path??'';
+ const initialPreview=desiredPath?avatarPreview(profile?.id,desiredPath):'';
+ const [picture,setPicture]=useState<{user:string;path:string;url:string}>({user:profile?.id??'',path:initialPreview?desiredPath:'',url:initialPreview});
+ const currentPhoto=picture.user===profile?.id&&picture.path===desiredPath?picture.url:'';
+ const previousPhoto=picture.user===profile?.id?picture.url:'';
+ const preview=desiredPath?avatarPreview(profile?.id,desiredPath):'';
+ const photo=currentPhoto||previousPhoto||preview;
+ const pendingPhoto=!!desiredPath&&!photo;
  const admin=profile?.role==='admin';
  useEffect(()=>{
   let disposed=false;
-  setPicture({path:profile?.avatar_path??'',url:''});
+  const path=profile?.avatar_path??'';
+  const cached=path?avatarPreview(profile?.id,path):'';
+  if(!path){setPicture({user:profile?.id??'',path:'',url:''});return;}
+  if(cached)setPicture({user:profile.id,path,url:cached});
   const refresh=async()=>{
-   if(profile?.avatar_path)try{
-    const d=await api('fileUrl',{id:profile.avatar_path});
-    if(!disposed)setPicture({path:profile.avatar_path,url:d.signedUrl});
+   try{
+    const d=await api('fileUrl',{id:path});
+    if(!disposed)setPicture({user:profile.id,path,url:d.signedUrl});
    }catch{/* Keep the last loaded picture through transient network failures. */}
   };
   void refresh();
@@ -29,15 +40,15 @@ export function Mango({profile,size=42}:{profile:any;size?:number}){
   const visible=()=>{if(!document.hidden)void refresh();};
   document.addEventListener('visibilitychange',visible);
   return()=>{disposed=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
- },[profile?.avatar_path]);
+ },[profile?.id,profile?.avatar_path]);
  const color=profile?.avatar?.color??`hsl(${35+code%14} 95% 65%)`;
  const hat=profile?.avatar?.hat??(['none','cap','bow','flower'][code%4]);
- const avatarLabel=admin?'系统管理员芒果头像':'芒果头像';
- return <span className={'mango-avatar '+(admin?'mango-avatar--admin':'mango-avatar--guest')+(photo?' mango-avatar--photo':'')} style={{width:size,height:size}} title={admin?'系统管理员':'专属芒果 #'+code}>
+ const avatarLabel=admin?'系统管理员个人头像':'个人头像';
+ return <span className={'mango-avatar '+(admin?'mango-avatar--admin':'mango-avatar--guest')+(photo?' mango-avatar--photo':'')} style={{width:size,height:size}} title={admin?'系统管理员':'用户 #'+code}>
   {photo?<>
-   <img className="mango-photo" alt={admin?'系统管理员个人头像':'个人头像'} src={photo} onError={()=>setPicture(current=>current.path===profile?.avatar_path?{...current,url:''}:current)}/>
+   <img className="mango-photo" alt={admin?'系统管理员个人头像':'个人头像'} src={photo} onError={()=>setPicture(current=>current.path===desiredPath?{...current,url:''}:current)}/>
    {admin&&<svg className="mango-avatar-art mango-crown-overlay" viewBox="0 0 80 80" width={size} height={size} aria-hidden="true"><Crown/></svg>}
-  </>:<svg className="mango-avatar-art" viewBox="0 0 80 80" width={size} height={size} role="img" aria-label={avatarLabel}>
+  </>:pendingPhoto?<span className="mango-avatar-pending" role="img" aria-label="头像加载中"/>:<svg className="mango-avatar-art" viewBox="0 0 80 80" width={size} height={size} role="img" aria-label={avatarLabel}>
    <g transform={admin?'translate(4 8) scale(.9)':undefined}>
     <path d="M44 17 Q50 1 65 9 Q60 22 44 20" fill="#4e9674"/>
     <path d="M39 15 C12 13 12 53 25 67 C39 83 65 62 67 39 C69 17 54 11 39 15" fill={color}/>
