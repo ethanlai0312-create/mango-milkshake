@@ -41,6 +41,8 @@ export function createSessionBridge({upstreamOrigin,uploadGrants,rewriteUrl,fetc
    if(!worker&&action!=='health'&&!csrfAllowed(req.headers,origin))return send(res,403,{error:'请求来源不受支持'},baseHeaders);
    if(!worker&&req.headers.authorization)return send(res,401,{error:'请刷新页面后重新登录',code:'SESSION_EXPIRED'},baseHeaders);
    if(!worker&&!anonymous&&!entry)return send(res,401,{error:'请重新登录',code:'SESSION_EXPIRED'},baseHeaders);
+   if(!anonymous&&!worker&&req.headers['x-mango-session-id']&&req.headers['x-mango-session-id']!==entry?.info.session_id)return send(res,409,{error:'账号已变化，请重试',code:'SESSION_CHANGED'},baseHeaders);
+   if(!isApi){const gate=await upstream('/functions/v1/api','POST',{action:'me'},true);if(!gate.ok){if(gate.status===401)clear();return send(res,gate.status,{error:'请重新登录后操作验证器'},baseHeaders);}const identity=await gate.json();if((identity.data??identity)?.role!=='admin')return send(res,403,{error:'仅主管理员可使用双重验证'},baseHeaders);}
    const response=await upstream(path,req.method,payload,!anonymous&&!worker);
    const headers=Object.fromEntries(response.headers);stripInternalResponseHeaders(headers);for(const key of ['content-encoding','content-length','transfer-encoding','connection','access-control-allow-origin','set-cookie'])delete headers[key];Object.assign(headers,baseHeaders,{'cache-control':'no-store','x-content-type-options':'nosniff','cross-origin-resource-policy':'same-origin','referrer-policy':'no-referrer'});
    if(!worker&&!anonymous&&response.status===401)clear();
@@ -49,12 +51,12 @@ export function createSessionBridge({upstreamOrigin,uploadGrants,rewriteUrl,fetc
    let result=JSON.parse(Buffer.concat(chunks).toString());
    if(response.ok){
     uploadGrants.remember(result.data);
-    const tokens=isApi&&action==='login'?result.session:isApi&&action==='changePassword'?result.data?.session:!isApi&&path.endsWith('/verify')?result:null;
+    const tokens=isApi&&['login','register'].includes(action)?result.session:isApi&&action==='changePassword'?result.data?.session:!isApi&&path.endsWith('/verify')?result:null;
     if(tokens){
      if(entry&&!entry.active)throw Object.assign(Error('Session changed'),{status:409});
-     if(action!=='login'&&tokens.user?.id!==entry?.info.user.id)throw Error('Unexpected session user');
+     if(!['login','register'].includes(action)&&tokens.user?.id!==entry?.info.user.id)throw Error('Unexpected session user');
      entry=vault.adopt(tokens,String(req.headers.apikey??entry?.apikey??''),entry);res.setHeader('Set-Cookie',sessionCookie(entry.id,secure));
-     if(isApi&&action==='login')result.session=vault.metadata(entry);else if(isApi)result.data.session=vault.metadata(entry);else result=vault.metadata(entry);
+     if(isApi&&['login','register'].includes(action))result.session=vault.metadata(entry);else if(isApi)result.data.session=vault.metadata(entry);else result=vault.metadata(entry);
     }
     if(result.data?.signedUrl)result.data.signedUrl=rewriteUrl(result.data.signedUrl,origin);
    }

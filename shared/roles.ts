@@ -2,7 +2,7 @@
 export const isTesterRole=(role:string)=>role==='tester'||role==='secondary_admin';
 export const roleLabel=(role:string)=>role==='admin'?'primary admin':role==='secondary_admin'?'secondary admin':role==='tester'?'tester':'user';
 export const testerPreviewPages=new Set(['review','users','invites','grading','trash','logs','config']);
-const testerActions=new Set(['me','sessionStatus','sessionActivity','presence','changePassword','settings','updateAvatar','exams','testerExam','files','testerFile','getExam','createExam','saveExam','submitReview','deleteExam','copyExam','startAttempt','attempt','saveAttempt','submitAttempt','history','historyQuery','leaderboard','upload','renewUpload','verifyUpload','deleteFile','conversionInfo','conversionInputs','wakeConverter','conversions','createConversion','deleteConversion','cancelConversion','conversionDownload']);
+const testerActions=new Set(['ackLoginIdNotice','mistakeExams','mistakes','me','sessionStatus','sessionActivity','presence','changePassword','settings','updateAvatar','exams','testerExam','files','testerFile','getExam','createExam','saveExam','submitReview','deleteExam','copyExam','startAttempt','attempt','saveAttempt','submitAttempt','history','historyQuery','leaderboard','upload','renewUpload','verifyUpload','deleteFile','conversionInfo','conversionInputs','wakeConverter','conversions','createConversion','deleteConversion','cancelConversion','conversionDownload']);
 export function roleAllows(role:string,action:string,params:Record<string,unknown>={}){
  if(!['admin','visitor','tester','secondary_admin'].includes(role))return false;
  if(!isTesterRole(role))return true;

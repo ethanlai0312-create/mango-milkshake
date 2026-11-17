@@ -16,6 +16,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node scripts/check-release.mjs
+      - run: pnpm test
       - run: pnpm build
         env:
           VITE_SUPABASE_URL: https://your-project.supabase.co

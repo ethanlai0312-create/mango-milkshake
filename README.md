@@ -1,17 +1,19 @@
 # Mango Study · 芒果學社
 
-目前版本：**v02.02.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v2026.11.17.01**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
 ## 公開示範帳號
 
-| 權限 | 登入 ID | 密碼 |
-| --- | --- | --- |
-| primary admin | primary admin | primary admin |
-| secondary admin | secondary admin | secondary admin |
-| user | user | user |
-| tester | tester | tester |
+| 權限 | 昵称 | 登入 ID | 密碼 |
+| --- | --- | --- | --- |
+| primary admin | primary admin | primary admin | primary admin |
+| secondary admin | secondary admin | secondary admin | secondary admin |
+| user | user | user | user |
+| tester | tester | tester | tester |
+
+今后每项新增权限都应添加同名演示账号：昵称、登录 ID、密码均为显示权限名称，字母统一小写；只供空数据库的明确 opt-in 演示环境，并同步记录于本表及仓库简介。
 
 以上是刻意公開的示範憑證，僅供全新隔離的示範部署，並非原網站帳號。倉庫不含原網站的使用者、密碼雜湊、試卷、答卷、成績、日誌、上傳檔案或備份。
 
@@ -63,3 +65,12 @@ services/converter 包含轉換器及隔離程式。由專案根目錄以 servic
 ## 發布邊界
 
 只發布功能程式碼、資料庫結構、設定範本、授權與文件。未帶入原 Git 開發歷史、環境檔、測試資料、執行紀錄、帳號、試卷、答卷、排行榜資料、上傳內容、資料庫備份、TLS 私鑰或通道憑證。除上方明確公開的示範憑證外，勿提交實際帳號、金鑰或業務內容。
+
+
+## 本次界面与复习功能
+
+统一三线两级导航、个人错题本、全部／错误／不良答卷筛选，以及最小题号未完成跳转。权限隔离和页面准备流程见 [导航说明](docs/navigation.md) 与 [复习功能说明](docs/review-and-navigation.md)。
+
+## 历史版本
+
+版本形式为 `vYYYY.MM.DD.NN`，使用北京时间；每天 `.01` 起算，只有实际更新并通过验收时才增加。Git 标签与同名 Release 保存每份独立完整源码快照。同名文件在不同标签中分别保存，切换标签或下载对应版本 Source code 即可，不需要另外创建仓库或混放版本目录。已发布标签不覆盖、不移动。旧版编号标签保持原样。

@@ -103,11 +103,11 @@ const exam = fields({
 });
 
 const actions: Record<string, Fields> = {
- health: {},
+ health: {}, mistakeExams: {}, mistakes: {exam:uuid,mode:optional(enumeration('wrong','partial','all')),offset},
  login,
- register: {...login, nickname: requiredText(128), invite: requiredText(256)},
+ register: {password, nickname: requiredText(128), invite: requiredText(256)},
  bootstrap: {...login, nickname: optional(requiredText(128)), token: requiredText(512)},
- sessionStatus: {}, sessionActivity: {}, me: {}, adminMfaFactors: {},
+ ackLoginIdNotice: {}, sessionStatus: {}, sessionActivity: {}, me: {}, adminMfaFactors: {},
  settings: {
   nickname: optional(requiredText(128)),
   settings: fields({theme: optional(enumeration('light', 'dark', 'system')), language: optional(enumeration('zh-CN', 'zh-TW'))}),

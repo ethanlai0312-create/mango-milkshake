@@ -12,3 +12,5 @@
 主管理員可將其他非主管理員帳號切換為 user、tester、secondary admin，不能透過下拉選單授予 primary admin。變更後撤銷舊會話並清理舊角色快取，目標需重新登入。
 
 資料庫保留 admin、visitor 的既有儲存值；新副管理員儲存為 secondary_admin。權限判斷以後端為準，不由暱稱或登入 ID 推定。
+
+账号目录在服务器端按 primary admin、secondary admin、tester、user 排序后分页；只有主管理员可见目录及登录 ID。错题本始终只查询当前账号历史作答，主管理员也不会通过个人错题本读取他人资料。

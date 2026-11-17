@@ -16,6 +16,8 @@ export class PageSurface extends Component<Props,{},HTMLDivElement|null>{
  private revealFrame=0;
  private outgoing:HTMLDivElement|null=null;
  private restoreFocus=false;
+ private exitOrigin:MotionPoint|undefined;
+ private exitRect:DOMRect|undefined;
  private stop(){cancelAnimationFrame(this.revealFrame);this.revealFrame=0;this.entering?.cancel();this.exiting?.cancel();this.entering=null;this.exiting=null;this.outgoing?.remove();this.outgoing=null;}
  private isPending(){return Array.from(this.content.current?.querySelectorAll('[data-page-pending="true"]')??[]).some(node=>node.closest('.route-stage')===this.root.current);}
  private watchContent(){
@@ -64,9 +66,11 @@ export class PageSurface extends Component<Props,{},HTMLDivElement|null>{
   // Do not cancel a tiny flying page into a full-size outgoing flash on rapid navigation.
   if(interrupted||!content||typeof content.animate!=='function')return null;
   const rect=content.getBoundingClientRect();
+  this.exitOrigin=previous.origin??this.props.origin;
   const top=Math.max(rect.top,Math.min(innerHeight,parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height'))||0));
   const bottom=Math.min(innerHeight,rect.bottom);
   if(bottom<=top)return null;
+  this.exitRect=new DOMRect(rect.left,top,rect.width,bottom-top);
   const snapshot=document.createElement('div'),copy=content.cloneNode(true) as HTMLDivElement;
   snapshot.className='route-outgoing';snapshot.inert=true;snapshot.setAttribute('aria-hidden','true');
   Object.assign(snapshot.style,{left:rect.left+'px',top:top+'px',width:rect.width+'px',height:(bottom-top)+'px'});
@@ -107,7 +111,9 @@ export class PageSurface extends Component<Props,{},HTMLDivElement|null>{
    this.outgoing=snapshot;root.append(snapshot);
    snapshot.querySelectorAll<HTMLElement>('[data-snapshot-scroll]').forEach(node=>{const [top,left]=JSON.parse(node.dataset.snapshotScroll!);node.scrollTop=top;node.scrollLeft=left;delete node.dataset.snapshotScroll;});
    const reduced=shouldReduceMotion();
-   const exit=snapshot.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:`translateY(${reduced?0:-3}px)`}],{duration:reduced?160:220,easing:'ease-out',fill:'forwards'});
+   const policy=pageMotion(reduced,{origin:this.exitOrigin,rect:this.exitRect??snapshot.getBoundingClientRect(),viewport:{width:innerWidth,height:innerHeight}});
+   snapshot.style.transformOrigin=policy.transformOrigin;
+   const exit=snapshot.animate([{opacity:1,transform:policy.toTransform},{opacity:0,transform:policy.fromTransform}],{duration:reduced?160:280,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'});
    this.exiting=exit;
    void exit.finished.then(()=>{if(this.outgoing===snapshot){snapshot.remove();this.outgoing=null;this.exiting=null;exit.cancel();}},()=>{});
   }

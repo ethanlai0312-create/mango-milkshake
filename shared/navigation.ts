@@ -1,5 +1,5 @@
 import {isTesterRole} from './roles';
-const pages=new Set(['home','exams','create','mine','history','rank','shared','convert','settings','review','users','invites','grading','trash','logs','config']);
+const pages=new Set(['mistakes','home','exams','create','mine','history','rank','shared','convert','settings','review','users','invites','grading','trash','logs','config']);
 const adminPages=new Set(['review','users','invites','grading','trash','logs','config']);
 /** Route names only. This is UI validation; backend authorization remains authoritative. */
 export function pageFromHash(hash:string,role:string):string|null{

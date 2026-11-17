@@ -14,7 +14,7 @@ export const supabase=cookieAuth?createCookieAuthClient(supabaseUrl,import.meta.
 let sessionRequest:ReturnType<typeof supabase.auth.getSession>|undefined;
 export function readSession(){if(!sessionRequest)sessionRequest=deadline(supabase.auth.getSession().then(result=>{if(result.error)throw result.error;return result;}),12000,'登录状态检查超时，请重试；现有登录信息已保留。').finally(()=>{sessionRequest=undefined;});return sessionRequest;}
 export let serverOffset=0;
-const mutations=new Set(['setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
+const mutations=new Set(['ackLoginIdNotice','setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
 const inFlight=new Map<string,Promise<any>>();
 const anonymousActions=new Set(['login','register','bootstrap']);
 const downloadActions=new Set(['fileUrl','conversionDownload']);
@@ -35,7 +35,7 @@ export async function api<T=any>(action:string,p:Record<string,any>={},expectedS
  const timeout=timeoutMs?setTimeout(()=>controller.abort(),timeoutMs):undefined;
  const request=(async()=>{
   const before=Date.now();
-  const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',credentials:'same-origin',signal:controller.signal,headers:{'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...cookieAuth?{'X-Mango-Requested-With':'1'}:session?{Authorization:`Bearer ${session.access_token}`}:{ }},body});
+  const response=await fetch(supabaseUrl+'/functions/v1/api',{method:'POST',credentials:'same-origin',signal:controller.signal,headers:{'Content-Type':'application/json',apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,...cookieAuth?{'X-Mango-Requested-With':'1',...(id?{'X-Mango-Session-Id':id}:{})}:session?{Authorization:`Bearer ${session.access_token}`}:{ }},body});
   if(response.status===401||response.status===403)invalidateReadCache(session?.user.id);
   if(testerFile&&response.ok){const data=await response.blob();const mime=response.headers.get('x-mango-file-mime')??'application/octet-stream';const safe=/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm))$/.test(mime)?mime:'application/octet-stream';const signedUrl=retainMedia(cacheScope,URL.createObjectURL(new Blob([data],{type:safe})));return {signedUrl,mime,name:decodeURIComponent(response.headers.get('x-mango-file-name')??'file')} as T;}
   const payload=await response.json().catch(()=>{throw new ApiError(`服务暂不可用（${response.status}），请稍后重试`,response.status);});

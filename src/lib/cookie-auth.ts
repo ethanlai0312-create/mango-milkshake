@@ -6,7 +6,7 @@ export function createCookieAuthClient(base:string,key:string){
  try{for(const name of Object.keys(localStorage))if(/^sb-.*-auth-token(?:-code-verifier)?$/.test(name))localStorage.removeItem(name);}catch{/* Storage may be unavailable. Cookies still work. */}
  function emit(event:string){for(const callback of listeners)queueMicrotask(()=>callback(event,current));}
  async function send(path:string,method='GET',body?:unknown){
-  const response=await fetch(base+path,{method,credentials:'same-origin',cache:'no-store',headers:{apikey:key,'X-Mango-Requested-With':'1',...(body!==undefined?{'Content-Type':'application/json'}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  const response=await fetch(base+path,{method,credentials:'same-origin',cache:'no-store',headers:{apikey:key,'X-Mango-Requested-With':'1',...(current?.session_id?{'X-Mango-Session-Id':current.session_id}:{}),...(body!==undefined?{'Content-Type':'application/json'}:{})},body:body===undefined?undefined:JSON.stringify(body)});
   if(!response.ok){const data=await response.json().catch(()=>({}));throw Object.assign(new Error(data.error??data.message??'认证服务暂不可用，请重试'),{status:response.status});}
   return response.status===204?null:response.json();
  }
