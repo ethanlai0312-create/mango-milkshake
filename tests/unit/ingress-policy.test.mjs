@@ -17,13 +17,13 @@ describe('trusted HTTPS ingress',()=>{
  it.each(['POST','PUT','PATCH','DELETE'])('rejects HTTP %s before request body or auth is processed',method=>expect(transportDecision({...tunnel,method,headers:{'x-forwarded-proto':'http'}})).toEqual({status:403}));
  it('preserves explicit direct-loopback HTTP tests but not forged remote metadata',()=>{
   expect(transportDecision({origin:'http://127.0.0.1:5178',remoteAddress:'127.0.0.1',method:'POST'})).toEqual({secure:false,local:true});
-  expect(transportDecision({origin:'http://192.168.1.4:5178',remoteAddress:'192.168.1.5',method:'POST',headers:{'x-forwarded-proto':'https'}})).toEqual({status:403});
+  expect(transportDecision({origin:'http://10.10.10.10:5178',remoteAddress:'10.10.10.10',method:'POST',headers:{'x-forwarded-proto':'https'}})).toEqual({status:403});
  });
- it('redirects configured LAN reads to the actual TLS port',()=>expect(transportDecision({origin:'http://192.168.1.4:5178',remoteAddress:'192.168.1.5',httpsPort:8443,method:'HEAD'})).toEqual({status:301,location:'https://192.168.1.4:8443/'}));
+ it('redirects configured LAN reads to the actual TLS port',()=>expect(transportDecision({origin:'http://10.10.10.10:5178',remoteAddress:'10.10.10.10',httpsPort:8443,method:'HEAD'})).toEqual({status:301,location:'https://10.10.10.10:8443/'}));
  it('never redirects to an unvalidated host/path or accepts a missing LAN TLS listener',()=>{
   for(const origin of ['https://name:password@study.example.com','https://study.example.com/other','javascript:alert(1)'])expect(transportDecision({...tunnel,origin})).toEqual({status:400});
   for(const rawUrl of ['//evil.invalid','/\\evil','/x\r\nHeader: value'])expect(transportDecision({...tunnel,rawUrl})).toEqual({status:400});
-  expect(transportDecision({origin:'http://192.168.1.4:5178',remoteAddress:'192.168.1.5'})).toEqual({status:503});
+  expect(transportDecision({origin:'http://10.10.10.10:5178',remoteAddress:'10.10.10.10'})).toEqual({status:503});
  });
  it('uses native TLS even when a client spoofs a forwarding header',()=>expect(transportDecision({...tunnel,encrypted:true,headers:{'x-forwarded-proto':'http'}})).toEqual({secure:true}));
  it('sets one-year HSTS without silently opting into preload',()=>{expect(hstsValue()).toBe('max-age=31536000; includeSubDomains');expect(hstsValue({preload:true})).toMatch(/; preload$/);});

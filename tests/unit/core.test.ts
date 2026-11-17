@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {newQuestion,normalizeUsername,duration,splitOptions} from '../../shared/model';
 import {gradeQuestion,gradeExam,numberValue} from '../../shared/grading';
 describe('服务端评分与基础规则',()=>{
- it('用户名 Unicode 规范化且忽略大小写',()=>expect(normalizeUsername(' ＥＴＨＡＮ ')).toBe('ethan'));
+ it('用户名 Unicode 规范化且忽略大小写',()=>expect(normalizeUsername(' ＭＡＮＧＯ ')).toBe('mango'));
  it('可信时间仅格式化，不以 tick 次数累计',()=>{expect(duration(5025)).toBe('01:23:45');expect(duration(0)).toBe('00:00:00');});
  it('批量拆分选项',()=>expect(splitOptions('A. 苹果\nB. 香蕉\nC. 西瓜\nD. 葡萄')).toHaveLength(4));
  it.each([['蘋果','苹果'],['学校','學校']])('繁简等价 %s %s',(key,input)=>{const q={...newQuestion('blank'),answer:[key]};expect(gradeQuestion(q,input).score).toBe(5);});

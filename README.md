@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v2026.11.17.05**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v2026.11.17.06**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -60,6 +60,12 @@ services/converter 包含轉換器及隔離程式。由專案根目錄以 servic
 ## 本次界面与复习功能
 
 统一三线两级导航、个人错题本、全部／错误／不良答卷筛选，以及最小题号未完成跳转。权限隔离和页面准备流程见 [导航说明](docs/navigation.md) 与 [复习功能说明](docs/review-and-navigation.md)。
+
+## 版本快照與隱私
+
+同一個倉庫保存全部版本，不建立其他倉庫：每個版本都是一個不可移動的 Git 標籤與同名 GitHub Release，對應一份完整的獨立源碼快照，可在 Release 頁面分別下載 `Source code` 壓縮包。
+
+推送前與 CI 會執行 `scripts/check-release.mjs` 的來源專用（source-only）檢查：只允許功能程式碼、資料庫結構遷移、設定範本與文件；拒絕使用者資料、試卷與答卷、上傳檔案、操作日誌、資料庫備份、環境檔、私鑰與真實帳號識別。檢查不通過就不能提交或發布。
 
 ## 历史版本
 
