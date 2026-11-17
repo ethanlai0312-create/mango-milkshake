@@ -1,5 +1,4 @@
-/** Nicknames are mutable and non-unique. Compare stable account IDs only. */
+/** The server marks the viewer's own row; other rows never share client-side account IDs. */
 export function leaderboardAvatarProfile(row:any,currentProfile?:any){
- const accountId=row.user_id??row.profile?.id;
- return typeof currentProfile?.id==='string'&&currentProfile.id.length>0&&accountId===currentProfile.id?currentProfile:row.profile??{};
+ return row?.is_me===true&&currentProfile?currentProfile:row?.profile??{};
 }

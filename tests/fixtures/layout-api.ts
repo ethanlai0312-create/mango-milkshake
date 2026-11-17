@@ -23,7 +23,7 @@ export async function installLayoutApi(page:Page,role:'admin'|'visitor'|'tester'
   ...(kind==='single'?{answer:0}:{}),
   ...(kind==='multiple'?{answer:[0,1]}:{}),
  }));
- let exam:Exam={id:examId,owner_id:userId,title:'版面測試試卷 · 綜合題型與長文字響應式檢查',
+ let exam:Exam={id:examId,owner_id:userId,author:'版面測試用户',title:'版面測試試卷 · 綜合題型與長文字響應式檢查',
   description:'合成資料，檢查排版。',subject:'AI',tags:['排版'],status:'draft',revision:1,questions,
   time_limit:0,repeat_allowed:true,reveal_answers:true,show_explanations:true,
   published_version_id:'60000000-0000-4000-8000-000000000005'};
@@ -64,7 +64,7 @@ export async function installLayoutApi(page:Page,role:'admin'|'visitor'|'tester'
    case 'attempt':data={exam,attempt};break;
    case 'saveAttempt':attempt={...attempt,answers:body.answers,revision:attempt.revision+1};data=attempt;break;
    case 'historyQuery':data=history;break;
-   case 'rank':case 'ranking':case 'leaderboard':data=[{...profile,user_id:userId,rank:1,score:15,max_score:15,duration_seconds:105},{...profile,id:'60000000-0000-4000-8000-000000000007',user_id:'60000000-0000-4000-8000-000000000007',username:'長名稱'.repeat(14),role:'visitor',rank:2,score:14,max_score:15,duration_seconds:106}];break;
+   case 'rank':case 'ranking':case 'leaderboard':data=[{key:'rank-self',is_me:true,username:profile.username,rank:1,score:15,max_score:15,duration_seconds:105,profile:{username:profile.username,avatar:profile.avatar,avatar_code:profile.avatar_code}},{key:'rank-two',is_me:false,username:'長名稱'.repeat(14),rank:2,score:14,max_score:15,duration_seconds:106,profile:{username:'長名稱'.repeat(14),avatar:{},avatar_code:7}}];break;
    case 'users':data=[{...profile,is_online:[...tabs.values()].some(Boolean)},{...profile,id:'60000000-0000-4000-8000-000000000008',username:'訪客帳號'.repeat(10),role:'visitor'}];break;
    case 'invites':data=[{id:examId,login_id:'Invitation 4321',label:'課程註冊',used:0,max_uses:1,expires_at:new Date(Date.now()+86400000).toISOString(),created_at:now,revoked:false}];break;
    case 'logs':data=[{id:examId,event:'save_exam',entity_id:examId,created_at:now}];break;
