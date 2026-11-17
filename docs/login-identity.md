@@ -19,6 +19,6 @@ v02.01.000 將登入身分與公開名稱分開。資料仍以既有帳號 UUID 
 
 結構遷移不包含真實帳號或 ID 對照。既有資料先取得通用的 `legacy` 加 UUID 形式 ID；部署者應在同一個資料庫事務中套用私人對照，驗證每個帳號的 UUID、權限、密碼及資料歸屬後提交。受限的一次性遷移開關只允許資料庫操作員使用，API 的 service_role 無法修改 ID。
 
-舊版未綁定 ID 的密令會作廢，需在新版重新生成。公開示範安裝仍為明確 opt-in、僅限空資料庫的 admin/admin、user/user、tester/tester；這些示範帳號不加入正式網站。舊的暱稱登入請求沒有相容別名。
+舊版未綁定 ID 的密令會作廢，需在新版重新生成。公開示範安裝仍為明確 opt-in、僅限空資料庫的 primary admin/primary admin、secondary admin/secondary admin、user/user、tester/tester；這些示範帳號不加入正式網站。舊的暱稱登入請求沒有相容別名。
 
 參考：[Supabase getUserById](https://supabase.com/docs/reference/javascript/auth-admin-getuserbyid)、[PostgreSQL 鎖定](https://www.postgresql.org/docs/current/explicit-locking.html)、[PostgreSQL 唯一索引](https://www.postgresql.org/docs/current/indexes-unique.html)。

@@ -1,3 +1,4 @@
+import {isTesterRole} from '../../shared/roles';
 import {authTransport,deadline} from './deadline';
 import {createCookieAuthClient} from './cookie-auth';
 import {createClient} from '@supabase/supabase-js';
@@ -19,7 +20,7 @@ const anonymousActions=new Set(['login','register','bootstrap']);
 const downloadActions=new Set(['fileUrl','conversionDownload']);
 const uploadActions=new Set(['upload','renewUpload']);
 export async function api<T=any>(action:string,p:Record<string,any>={},expectedSession?:string):Promise<T>{
- const testerFile=action==='fileUrl'&&getReadCacheRole()==='tester';
+ const testerFile=action==='fileUrl'&&isTesterRole(getReadCacheRole()??'');
  const body=serializeApiRequest(testerFile?'testerFile':action,testerFile?{id:p.id}:p);
  const session=anonymousActions.has(action)?null:(await readSession()).data.session;
  const id=sessionId(session);

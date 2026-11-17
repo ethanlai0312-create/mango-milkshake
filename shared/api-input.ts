@@ -121,7 +121,7 @@ const actions: Record<string, Fields> = {
  updateAvatar: {avatar: optional(avatar), avatar_path: optional(nullable(uuid))},
  purgeAccount: {...id, confirmPermanent: bool, confirmUsername: requiredText(128)},
  userState: {...id, active: bool},
- setUserRole: {...id, role: enumeration('user','tester'), expectedRole: enumeration('user','tester')},
+ setUserRole: {...id, role: enumeration('user','tester','secondary admin'), expectedRole: enumeration('user','tester','secondary admin')},
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,

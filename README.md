@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v02.01.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v02.02.000**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -8,13 +8,14 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 | 權限 | 登入 ID | 密碼 |
 | --- | --- | --- |
-| admin | admin | admin |
+| primary admin | primary admin | primary admin |
+| secondary admin | secondary admin | secondary admin |
 | user | user | user |
 | tester | tester | tester |
 
 以上是刻意公開的示範憑證，僅供全新隔離的示範部署，並非原網站帳號。倉庫不含原網站的使用者、密碼雜湊、試卷、答卷、成績、日誌、上傳檔案或備份。
 
-使用可選的 supabase/demo-accounts.sql 建立這三組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
+使用可選的 supabase/demo-accounts.sql 建立這四組帳號，密碼以 bcrypt 儲存。初始化要求資料庫為空，並要求在同一個 psql 會話先執行 SET mango.allow_demo_seed = 'yes';。示範檔放在 migrations 以外，遷移和 CI 不會自動啟用公開憑證。正式部署應自行建立獨立強密碼帳號。
 
 ## 管理員雙重驗證器
 
@@ -29,6 +30,10 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 ## 登入 ID 與公開暱稱
 
 使用固定 ID 和密碼登入，公開位置只顯示可修改的暱稱。ID 至少4位、不分大小寫查重，僅在自己的設定中只讀顯示。生成註冊密令前需預留全新 ID，每份密令一次註冊；撤銷或過期的未註冊 ID 可重新綁定，舊密令保持無效。資料、頭像和排名依 UUID 關聯，暱稱重名不混用資料。[部署與遷移說明](docs/login-identity.md)。
+
+## 四種權限
+
+primary admin（主管理員）保留完整管理權限；secondary admin（副管理員）暫與 tester（測試員）完全相同；user 為一般用戶。**只有主管理員需要雙重驗證，副管理員、測試員和用戶均不要求驗證器。** 副管理員的管理頁僅用示例資料，不讀取真實管理資料或執行管理操作。主管理員可切換其他帳號為 secondary admin/tester/user。詳見 [權限說明](docs/permissions.md)。
 
 ## 功能
 
@@ -47,7 +52,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 登入、保存、評分和權限判斷需要後端。請建立自己的全新 Supabase 或自託管相容環境，依序套用 supabase/migrations，再部署 supabase/functions/api。遷移只含結構、函式、權限及必要系統預設，沒有業務資料。API 依賴後端執行環境金鑰，部署者自行提供。
 
-初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；admin 仍為管理員。tester 繼承 user 的個人功能，可測試自己的出題、答題、頭像與私人文件；額外提供使用示例資料的管理頁面測試入口。禁止存取他人私人資料及執行管理操作；排行榜只顯示自己的實際記錄。詳見 [權限說明](docs/permissions.md)。admin 可在帳號管理將非 admin 帳號切換為 user/tester，需驗證器確認，切換後目標需重新登入。
+初始管理員保留名稱為 admin。一般使用者的資料庫角色值目前沿用 visitor，介面顯示 user；primary admin 為主管理員。tester 繼承 user 的個人功能，可測試自己的出題、答題、頭像與私人文件；額外提供使用示例資料的管理頁面測試入口。禁止存取他人私人資料及執行管理操作；排行榜只顯示自己的實際記錄。詳見 [權限說明](docs/permissions.md)。admin 可在帳號管理將非 admin 帳號切換為 user/tester，需驗證器確認，切換後目標需重新登入。
 
 ## 自託管與轉換器
 

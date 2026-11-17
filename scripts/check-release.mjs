@@ -8,8 +8,8 @@ assert.equal(JSON.parse(await readFile('package.json','utf8')).version,semver);
 const readme=await readFile('README.md','utf8'),changelog=await readFile('CHANGELOG.md','utf8');
 assert(readme.includes(version)&&changelog.includes('## '+version),'Document this release');
 const demo=await readFile('supabase/demo-accounts.sql','utf8');
-for(const [,name,password,storedRole] of demo.matchAll(/\('([a-z]+)','([a-z]+)','([a-z]+)'\)/g)){
- const role=storedRole==='visitor'?'user':storedRole;assert.equal(name,role);assert.equal(password,role);assert(readme.includes(`| ${role} | ${name} | ${password} |`),'Document every demo role');
+for(const [,name,password,storedRole] of demo.matchAll(/\('([a-z_ ]+)','([a-z_ ]+)','([a-z_ ]+)'\)/g)){
+ const role=storedRole==='admin'?'primary admin':storedRole==='secondary_admin'?'secondary admin':storedRole==='visitor'?'user':storedRole;assert.equal(name,role);assert.equal(password,role);assert(readme.includes(`| ${role} | ${name} | ${password} |`),'Document every demo role');
 }
 assert(readme.includes('https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2'));
 assert(readme.includes('https://apps.apple.com/app/google-authenticator/id388497605'));

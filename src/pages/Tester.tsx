@@ -1,7 +1,8 @@
+import {roleLabel} from '../../shared/roles';
 import {useState} from 'react';
 import {Button} from '../ui/Button';
 /** Local interface samples only. Never mounts privileged components or fetches their data. */
-export function TesterPage({page}:{page:string}){
+export function TesterPage({page,role='tester'}:{page:string;role?:string}){
  const [search,setSearch]=useState('');
  const specs:Record<string,{title:string;sample:string[];actions:string[]}>= {
   review:{title:'试卷审核',sample:['示例试卷（非真实资料）','待审核'],actions:['发布','退回']},
@@ -13,9 +14,9 @@ export function TesterPage({page}:{page:string}){
   config:{title:'系统配置',sample:['示例配置（非实际设置）','地址、密钥及实际配置均不读取'],actions:['保存配置']},
  };
  const spec=specs[page];if(!spec)return null;
- return <div data-tester-preview="true"><div className="page-heading"><h1>{spec.title}</h1><span className="badge">tester · 界面测试</span></div>
+ return <div data-tester-preview="true"><div className="page-heading"><h1>{spec.title}</h1><span className="badge">{roleLabel(role)} · 界面测试</span></div>
   <p className="notice" role="note">仅供检查界面。以下为示例数据，不读取真实管理资料，管理操作不可执行。自己的出题、答题和文件功能可正常使用。</p>
   <label>搜索示例<input className="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="仅筛选本页示例"/></label>
-  <section className="card data-region"><div className="table-wrap"><table className="responsive-records"><thead><tr><th>记录</th><th>状态 / 信息</th><th>操作</th></tr></thead><tbody>{spec.sample.join(' ').includes(search)&&<tr>{spec.sample.map((value,i)=><td key={i} data-label={i?'状态 / 信息':'记录'}>{value}</td>)}<td data-label="操作"><div className="actions">{spec.actions.map(label=><Button key={label} disabled title="tester不能执行管理操作">{label}</Button>)}</div></td></tr>}</tbody></table></div></section>
+  <section className="card data-region"><div className="table-wrap"><table className="responsive-records"><thead><tr><th>记录</th><th>状态 / 信息</th><th>操作</th></tr></thead><tbody>{spec.sample.join(' ').includes(search)&&<tr>{spec.sample.map((value,i)=><td key={i} data-label={i?'状态 / 信息':'记录'}>{value}</td>)}<td data-label="操作"><div className="actions">{spec.actions.map(label=><Button key={label} disabled title="此权限不能执行管理操作">{label}</Button>)}</div></td></tr>}</tbody></table></div></section>
  </div>;
 }
