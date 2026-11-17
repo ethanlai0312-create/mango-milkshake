@@ -1,6 +1,6 @@
 # Mango Study · 芒果學社
 
-目前版本：**v2026.11.17.01**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+目前版本：**v2026.11.17.02**。版本與發布規則見 [RELEASE_POLICY.md](RELEASE_POLICY.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開網站功能原始碼，採 MIT 授權；第三方依賴保留各自授權。
 
@@ -35,7 +35,7 @@ React、TypeScript、Vite 與 Supabase 的線上複習及試卷平台。公開�
 
 ## 四種權限
 
-primary admin（主管理員）保留完整管理權限；secondary admin（副管理員）暫與 tester（測試員）完全相同；user 為一般用戶。**只有主管理員需要雙重驗證，副管理員、測試員和用戶均不要求驗證器。** 副管理員的管理頁僅用示例資料，不讀取真實管理資料或執行管理操作。主管理員可切換其他帳號為 secondary admin/tester/user。詳見 [權限說明](docs/permissions.md)。
+primary admin（主管理员）保留完整管理权限。secondary admin（副管理员）可创建/复制/编辑未发布试卷、审核发布和退回、查看已提交答卷并批改、上传和编辑共享文件；没有删除、停用、账号/权限/密令、日志、系统配置或回收站权限，也不能撤销发布或替换文件。无权限菜单和按钮不显示。tester仍为隔离测试权限。只有主管理员要求双重验证。四种演示账号分别保留，详见[权限说明](docs/permissions.md)。
 
 ## 功能
 

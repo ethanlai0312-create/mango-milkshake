@@ -13,7 +13,7 @@ import {DocumentFrame} from '../../src/components/DocumentFrame';
 beforeEach(()=>setReadCacheAccount());
 describe('normal page controls before the first authorized data response',()=>{
  it('shows admin search and table columns instead of a loading or false empty result',()=>{
-  const html=renderToStaticMarkup(createElement(Admin,{mode:'review',onEdit:()=>{}}));
+  const html=renderToStaticMarkup(createElement(Admin,{role:'admin',mode:'review',onEdit:()=>{}}));
   expect(html).toContain('搜索记录');expect(html).toContain('<th>操作</th>');expect(html).toContain('data-page-pending="true"');
   expect(html).not.toMatch(/loading-state|加载中|暂无记录/);
  });

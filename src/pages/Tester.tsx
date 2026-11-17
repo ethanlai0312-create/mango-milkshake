@@ -17,6 +17,6 @@ export function TesterPage({page,role='tester'}:{page:string;role?:string}){
  return <div data-tester-preview="true"><div className="page-heading"><h1>{spec.title}</h1><span className="badge">{roleLabel(role)} · 界面测试</span></div>
   <p className="notice" role="note">仅供检查界面。以下为示例数据，不读取真实管理资料，管理操作不可执行。自己的出题、答题和文件功能可正常使用。</p>
   <label>搜索示例<input className="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="仅筛选本页示例"/></label>
-  <section className="card data-region"><div className="table-wrap"><table className="responsive-records"><thead><tr><th>记录</th><th>状态 / 信息</th><th>操作</th></tr></thead><tbody>{spec.sample.join(' ').includes(search)&&<tr>{spec.sample.map((value,i)=><td key={i} data-label={i?'状态 / 信息':'记录'}>{value}</td>)}<td data-label="操作"><div className="actions">{spec.actions.map(label=><Button key={label} disabled title="此权限不能执行管理操作">{label}</Button>)}</div></td></tr>}</tbody></table></div></section>
+  <section className="card data-region"><div className="table-wrap"><table className="responsive-records"><thead><tr><th>记录</th><th>状态 / 信息</th><th>操作</th></tr></thead><tbody>{spec.sample.join(' ').includes(search)&&<tr>{spec.sample.map((value,i)=><td key={i} data-label={i?'状态 / 信息':'记录'}>{value}</td>)}<td data-label="操作"><div className="actions"><span className="muted">只读预览</span></div></td></tr>}</tbody></table></div></section>
  </div>;
 }

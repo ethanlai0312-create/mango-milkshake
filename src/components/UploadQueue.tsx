@@ -1,3 +1,5 @@
+import {canDeleteContent} from '../../shared/roles';
+import {getReadCacheRole} from '../lib/read-cache';
 import {Button} from '../ui/Button';
 import {Upload as TusUpload} from 'tus-js-client';
 import {useEffect,useRef,useState} from 'react';
@@ -11,7 +13,7 @@ export function Upload({purpose,exam_id,attempt_id,onDone}:{purpose:string;exam_
  const render=()=>{if(mounted.current)setTasks(queue.current.map(t=>({...t})));};
  useEffect(()=>{mounted.current=true;const before=(event:BeforeUnloadEvent)=>{if(active.current){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',before);return()=>{mounted.current=false;window.removeEventListener('beforeunload',before);};},[]);
  function pump(){while(active.current<2){const task=queue.current.find(t=>t.status==='queued');if(!task)return;active.current++;task.running=true;task.status='uploading';render();void upload(task).finally(()=>{active.current--;task.running=false;requests.current.delete(task.id);render();pump();});}}
- async function upload(task:Task){try{const ticket=task.ticket??await api('upload',{purpose,exam_id,attempt_id,name:task.file.name,size:task.file.size,mime:task.file.type||'application/octet-stream'});task.ticket=ticket;if(task.status==='cancelled'){await api('deleteFile',{id:ticket.file.id});task.ticket=undefined;return;}
+ async function upload(task:Task){try{const ticket=task.ticket??await api('upload',{purpose,exam_id,attempt_id,name:task.file.name,size:task.file.size,mime:task.file.type||'application/octet-stream'});task.ticket=ticket;if(task.status==='cancelled'){if(canDeleteContent(getReadCacheRole()??'')){await api('deleteFile',{id:ticket.file.id});task.ticket=undefined;}return;}
   if(!task.uploaded){if(uploadTokenNeedsRenewal(ticket.token,serverNow()))Object.assign(ticket,await api('renewUpload',{id:ticket.file.id}));if(task.file.size>6*1024*1024){await new Promise<void>((resolve,reject)=>{const storageUrl=new URL(supabaseUrl);if(storageUrl.hostname.endsWith('.supabase.co'))storageUrl.hostname=storageUrl.hostname.replace('.supabase.co','.storage.supabase.co');let renewRequired=false;const tus:TusUpload=new TusUpload(task.file,{endpoint:storageUrl.origin+storageUrl.pathname.replace(/\/$/,'')+'/storage/v1/upload/resumable/sign',headers:{apikey:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY},metadata:{bucketName:'mango-private',objectName:ticket.file.path,contentType:task.file.type||'application/octet-stream'},onBeforeRequest:async request=>{if(task.status==='cancelled')throw new Error('已取消');if(renewRequired||uploadTokenNeedsRenewal(ticket.token,serverNow())){Object.assign(ticket,await api('renewUpload',{id:ticket.file.id}));renewRequired=false;}request.setHeader('x-signature',ticket.token);},onAfterResponse:(_request,response)=>{
  if(response.getHeader('x-mango-upload-renew')==='1')renewRequired=true;
  const resume=response.getHeader('x-mango-upload-resume');

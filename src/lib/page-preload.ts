@@ -1,6 +1,6 @@
 import {api} from './api';
 import {peekRead,captureReadCacheScope,getReadCacheAccount,getReadCacheRole} from './read-cache';
-import {isTesterRole,testerPreviewPages} from '../../shared/roles';
+import {canVisitManagement,testerPreviewPages} from '../../shared/roles';
 import {preloadedModule} from '../../shared/preloaded-module';
 
 export const pageModules={
@@ -20,7 +20,7 @@ function readFor(page:string):[string,Record<string,unknown>][] {
 }
 /** Intent/idle warming only; normal page requests remain authoritative. */
 export async function preparePage(page:string){
- if(testerPreviewPages.has(page)&&getReadCacheRole()!=='admin')return;
+ if(testerPreviewPages.has(page)&&(getReadCacheRole()==='tester'||!canVisitManagement(getReadCacheRole()??'',page)))return;
  const resource=pageModules[codeFor(page) as keyof typeof pageModules];
  if(resource)await resource.load();
  const jobs:Promise<unknown>[]=[];
@@ -36,7 +36,7 @@ export function prefetchPage(page:string){void preparePage(page).catch(()=>{});}
 export function warmPageModules(){
  let cancelled=false;const frame=requestAnimationFrame(async()=>{
   void (async()=>{for(const resource of [pageModules.editor,pageModules.attempt]){if(cancelled)return;try{await resource.load();}catch{/* Retry on a later intent. */}}})();
-  const pages=['exams','mine','history','shared','convert',...(getReadCacheRole()==='admin'?['review','users','invites','grading','trash','logs','config']:[])];
+  const pages=['exams','mine','history','shared','convert',...['review','users','invites','grading','trash','logs','config'].filter(p=>getReadCacheRole()!=='tester'&&canVisitManagement(getReadCacheRole()??'',p))];
   for(const page of pages){if(cancelled)return;try{await preparePage(page);}catch{/* Retry on explicit selection. */}}
 
  });

@@ -1,7 +1,17 @@
 import {it,expect} from 'vitest';
 import {adminNeedsMfa,adminNeedsEnrollment} from '../../shared/auth-security';
 it('only primary admin requires MFA, including when other roles have a stored factor',()=>{const factors=[{factor_type:'totp',status:'verified'}];for(const role of ['visitor','tester','secondary_admin']){expect(adminNeedsMfa(role,'aal1',factors,true)).toBe(false);expect(adminNeedsEnrollment(role,[])).toBe(false);}expect(adminNeedsMfa('admin','aal1',[],true)).toBe(true);});
-import {roleAllows,roleLabel} from '../../shared/roles';
+import {roleAllows,roleLabel,nonDestructiveExamChange} from '../../shared/roles';
 import {pageFromHash} from '../../shared/navigation';
-it('secondary admin has exactly tester capabilities across read and write scopes',()=>{for(const action of ['me','settings','updateAvatar','exams','files','testerFile','fileUrl','createExam','getExam','saveExam','startAttempt','attempt','history','historyQuery','leaderboard','upload','deleteFile','users','userPresence','invites','createInvite','revokeInvite','review','grade','logs','config','saveConfig','purgeAccount','resetPassword','setUserRole','adminMfaFactors','unknown'])for(const scope of [{},{mode:'admin'},{mode:'trash'},{all:true},{purpose:'shared'},{purpose:'avatar'}])expect(roleAllows('secondary_admin',action,scope)).toBe(roleAllows('tester',action,scope));});
-it('four labels and preview navigation are consistent',()=>{expect(['admin','secondary_admin','tester','visitor'].map(roleLabel)).toEqual(['primary admin','secondary admin','tester','user']);for(const page of ['users','logs','grading','invites','config'])expect(pageFromHash('#'+page,'secondary_admin')).toBe(page);});
+
+it('secondary is a real business manager without account, security or destructive access',()=>{
+ for(const action of ['getExam','createExam','saveExam','submitReview','copyExam','grade','updateFile','fileUrl','upload','historyQuery'])expect(roleAllows('secondary_admin',action)).toBe(true);
+ expect(roleAllows('secondary_admin','exams',{mode:'admin'})).toBe(true);expect(roleAllows('secondary_admin','historyQuery',{all:true})).toBe(true);
+ for(const action of ['users','userPresence','invites','createInvite','revokeInvite','logs','config','saveConfig','setUserRole','userState','purgeAccount','resetPassword','adminMfaFactors','deleteExam','purgeExam','deleteFile','replaceShared','deleteConversion','cancelConversion','unknown'])expect(roleAllows('secondary_admin',action)).toBe(false);
+ for(const decision of ['publish','return'])expect(roleAllows('secondary_admin','review',{decision})).toBe(true);
+ for(const decision of ['unpublish','restore','delete',''])expect(roleAllows('secondary_admin','review',{decision})).toBe(false);
+ expect(roleAllows('secondary_admin','exams',{mode:'trash'})).toBe(false);
+});
+it('secondary routes show only the business management functions',()=>{expect(['admin','secondary_admin','tester','visitor'].map(roleLabel)).toEqual(['primary admin','secondary admin','tester','user']);for(const page of ['review','grading'])expect(pageFromHash('#'+page,'secondary_admin')).toBe(page);for(const page of ['users','invites','logs','config','trash'])expect(pageFromHash('#'+page,'secondary_admin')).toBeNull();});
+
+it('nested exam writes cannot remove saved content or indirectly unpublish',()=>{const q={id:'one',kind:'single',options:['A','B'],attachments:['file']},before={status:'draft',questions:[q]};expect(nonDestructiveExamChange(before,{questions:[{...q,prompt:'changed'}]})).toBeUndefined();expect(nonDestructiveExamChange(before,{questions:[q,{...q,id:'two'}]})).toBeUndefined();for(const questions of [[],[{...q,kind:'short'}],[{...q,options:['A']}],[{...q,attachments:[]}]])expect(nonDestructiveExamChange(before,{questions})).toBeDefined();expect(nonDestructiveExamChange({...before,status:'published'},before)).toBeDefined();});
