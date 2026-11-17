@@ -24,3 +24,5 @@
 .user-records.read-only-accounts td[data-label="操作"]:has(.actions:empty){display:none!important}
 
 @media(min-width:801px){.user-records .account-metadata small{word-break:keep-all}}
+
+.maintenance-overlay{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:24px;background:#0b0f17cc;backdrop-filter:blur(4px)}.maintenance-overlay .card{width:min(520px,100%);text-align:center}.maintenance-overlay h1{margin-top:0}.maintenance-overlay button{margin-top:12px}

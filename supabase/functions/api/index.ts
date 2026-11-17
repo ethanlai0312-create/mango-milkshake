@@ -112,6 +112,7 @@ Deno.serve(async req=>{
   return new Response(JSON.stringify({data:result,server_time:new Date().toISOString()}),{headers});
  }
  if(action==='health')return new Response(JSON.stringify({ok:true,api:'v1',server_time:new Date().toISOString()}),{headers});
+ if(action==='maintenance'){const rows=check(await db.from('system_config').select('key,value').in('key',['maintenance_active','maintenance_until','maintenance_message']));const map=new Map(rows.map((r:any)=>[r.key,r.value]));return new Response(JSON.stringify({data:{active:map.get('maintenance_active')===true,until:typeof map.get('maintenance_until')==='string'?map.get('maintenance_until'):null,message:typeof map.get('maintenance_message')==='string'?map.get('maintenance_message'):'服务器正在维护或添加功能，请稍等预计5~10分钟恢复'}}),{headers});}
  if(['login','register','bootstrap'].includes(action)){
  if(action==='bootstrap'&&check(await db.from('profiles').select('id').eq('role','admin').limit(1)).length)fail('接口不存在',404);
  await limited('auth:aggregate:'+action,action==='login'?120:action==='register'?45:5,60);
@@ -248,6 +249,7 @@ Deno.serve(async req=>{
  case 'conversionDownload':{const j=check(await db.from('conversion_jobs').select('*').eq('id',p.id).eq('user_id',me.id).eq('status','completed').maybeSingle());if(!j)fail('转换记录不存在或无权限',404);if(Date.parse(j.expires_at)<Date.now())fail('文件已到期');data=check(await db.storage.from('mango-private').createSignedUrl(j.output_path,60,{download:(check(await db.from('files').select('name').eq('id',j.input_file_id).single()).name.replace(/\.[^.]+$/,'')||'converted')+'.'+(j.target==='png'?'zip':j.target)}));break;}
  case 'logs':manager();data=check(await db.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(100));break;
  case 'saveConfig':admin();if(p.key==='converter_url'){if(typeof p.value!=='string'||p.value!==''&&!/^https:\/\/[a-z0-9-]+\.onrender\.com$/.test(p.value))fail('需要Render HTTPS服务地址');}else if(p.key!=='registration_enabled'||typeof p.value!=='boolean')fail('配置无效');data=await mutate(me.id,'saveConfig',{key:p.key,value:p.value});break;
+ case 'setMaintenance':{admin();const active=p.active===true;const minutes=Math.max(1,Math.min(120,Math.floor(Number(p.minutes)||10)));const until=active?new Date(Date.now()+minutes*60000).toISOString():null;const message=String(p.message??'服务器正在维护或添加功能，请稍等预计5~10分钟恢复').slice(0,200);check(await db.from('system_config').upsert([{key:'maintenance_active',value:active},{key:'maintenance_until',value:until??''},{key:'maintenance_message',value:message}],{onConflict:'key'}));check(await db.from('audit_logs').insert({actor_id:me.id,event:'maintenance_changed',entity_id:'system',details:{active,until}}));data={active,until,message};break;}
  case 'config':manager();data=publicConfiguration(check(await db.from('system_config').select('*')));break;
  default:fail('接口不存在',404);
  }

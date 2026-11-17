@@ -16,7 +16,7 @@ export function readSession(){if(!sessionRequest)sessionRequest=deadline(supabas
 export let serverOffset=0;
 const mutations=new Set(['ackLoginIdNotice','setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
 const inFlight=new Map<string,Promise<any>>();
-const anonymousActions=new Set(['login','register','bootstrap']);
+const anonymousActions=new Set(['login','register','bootstrap','maintenance']);
 const downloadActions=new Set(['fileUrl','conversionDownload']);
 const uploadActions=new Set(['upload','renewUpload']);
 export async function api<T=any>(action:string,p:Record<string,any>={},expectedSession?:string):Promise<T>{

@@ -121,6 +121,8 @@ const actions: Record<string, Fields> = {
  users: legacyAdminFilters,
  userVisibility: {id: uuid},
  setUserVisibility: {id: uuid, blocked: array(uuid, 200), all: bool},
+ maintenance: {},
+ setMaintenance: {active: bool, minutes: optional(integer(1, 120)), message: optional(text(200))},
  impersonateUser: {id: uuid},
  updateAvatar: {avatar: optional(avatar), avatar_path: optional(nullable(uuid))},
  purgeAccount: {...id, confirmPermanent: bool, confirmUsername: requiredText(128)},
