@@ -129,6 +129,7 @@ const actions: Record<string, Fields> = {
  userState: {...id, active: bool},
  setUserRole: {...id, role: enumeration('user','tester','secondary admin'), expectedRole: enumeration('user','tester','secondary admin')},
  setRealName: {...id, realName: text(8)},
+ setNickname: {...id, nickname: requiredText(128)},
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,
