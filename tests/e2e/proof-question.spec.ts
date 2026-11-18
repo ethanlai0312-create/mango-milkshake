@@ -15,8 +15,11 @@ test('proof question has symbol buttons that insert deletable text and attachmen
  await proof.click();
  const input=page.getByLabel('参考证明或评分要点（可选）');
  await expect(input).toBeVisible();
+ await input.focus();
+ await expect(input).toBeFocused();
  await page.getByRole('button',{name:'插入因为'}).click();
  await expect(input).toHaveValue('∵');
+ await expect(input).toBeFocused();
  await page.getByRole('button',{name:'插入三角形'}).click();
  await expect(input).toHaveValue('∵△');
  await input.press('Backspace');
