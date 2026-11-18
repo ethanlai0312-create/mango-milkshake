@@ -1,0 +1,24 @@
+import {useEffect,useState} from 'react';
+import {CheckCircle2,Clock3,FileWarning,Plus,Trash2} from 'lucide-react';
+import {Button} from '../ui/Button';
+import {Upload} from '../components/Upload';
+import {ReportThread,type ReportThreadData} from '../components/ReportThread';
+import {api} from '../lib/api';
+import {REPORT_LEVEL1,REPORT_LEVEL2} from '../lib/report-menus';
+import '../styles/reports.css';
+const time=(value:string)=>new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(value));
+type FileMeta={id:string;name:string;mime:string;size:number};
+export function Reports(){
+ const [threads,setThreads]=useState<ReportThreadData[]>([]),[selected,setSelected]=useState(''),[draft,setDraft]=useState(''),[level1,setLevel1]=useState<string>('打字练习'),[level2,setLevel2]=useState('不指定二级菜单'),[body,setBody]=useState(''),[files,setFiles]=useState<FileMeta[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const load=async()=>{try{setThreads(await api<ReportThreadData[]>('reportThreads',{}));}catch(e){setError((e as Error).message);}};
+ useEffect(()=>{void load();},[]);
+ const start=async()=>{setBusy(true);setError('');try{const data=await api<{id:string}>('createReport',{level1,level2});setDraft(data.id);setBody('');setFiles([]);}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
+ const submit=async()=>{if(!draft)return;if(!body.trim()&&!files.length){setError('请填写报告内容或添加附件');return;}setBusy(true);setError('');try{await api('submitReport',{id:draft,level1,level2,body,attachments:files.map(f=>f.id)});setDraft('');setBody('');setFiles([]);setLevel2('不指定二级菜单');await load();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
+ const cancel=()=>{setDraft('');setBody('');setFiles([]);setError('');};
+ if(selected)return <ReportThread id={selected} admin={false} onBack={()=>{setSelected('');void load();}}/>;
+ return <div className="reports-page"><div className="page-heading"><div><p className="eyebrow"><FileWarning size={16}/> 问题报告</p><h1>提交报告</h1><p className="muted">发现功能、界面或权限问题时可提交，支持图片、影片和工作文档附件；只有主管理员能查看并回复。</p></div></div>
+  {error&&<div className="notice error">{error}</div>}
+  {!draft?<section className="card report-compose"><div className="report-form-grid"><label>一级菜单<select value={level1} onChange={e=>setLevel1(e.target.value)}>{REPORT_LEVEL1.map(item=><option key={item} value={item}>{item}</option>)}</select></label><label>二级菜单<select value={level2} onChange={e=>setLevel2(e.target.value)}>{REPORT_LEVEL2.map(item=><option key={item} value={item}>{item}</option>)}</select></label></div><p className="muted">先选择出问题的菜单，然后开始填写报告。</p><Button className="primary" disabled={busy} onClick={()=>void start()}><Plus size={16}/>{busy?'正在创建…':'开始填写报告'}</Button></section>:<section className="card report-compose"><div className="report-form-grid"><label>一级菜单<select value={level1} onChange={e=>setLevel1(e.target.value)}>{REPORT_LEVEL1.map(item=><option key={item} value={item}>{item}</option>)}</select></label><label>二级菜单<select value={level2} onChange={e=>setLevel2(e.target.value)}>{REPORT_LEVEL2.map(item=><option key={item} value={item}>{item}</option>)}</select></label></div><label>问题描述<textarea value={body} maxLength={20000} onChange={e=>setBody(e.target.value)} placeholder="描述问题、复现步骤或期望结果…"/></label><div className="report-upload"><div><strong>图片 / 影片 / 附件</strong><small>可拖入或点击添加；文档只供下载，不会在网站中运行或预览。</small></div><Upload purpose="report" report_id={draft} onDone={file=>setFiles(list=>list.some(x=>x.id===file.id)?list:[...list,{id:file.id,name:file.name,mime:file.mime,size:file.size}])}/></div>{files.length>0&&<div className="report-pending-files">{files.map(file=><span key={file.id}><FileWarning size={14}/>{file.name}<button type="button" aria-label={'移除 '+file.name} onClick={()=>setFiles(list=>list.filter(x=>x.id!==file.id))}>×</button></span>)}</div>}<div className="report-actions"><Button onClick={cancel}>取消</Button><Button className="primary" disabled={busy} onClick={()=>void submit()}>{busy?'正在提交…':'提交报告给主管理员'}</Button></div></section>}
+  <section className="card report-history"><div className="report-history-head"><h2>我的提交历史</h2><span className="muted">按提交时间排序</span></div>{threads.length?<div className="report-list">{threads.map(thread=><button type="button" key={thread.id} className="report-row" onClick={()=>setSelected(thread.id)}><span className="report-row-main"><b>{thread.level1}{thread.level2&&thread.level2!=='不指定二级菜单'?' · '+thread.level2:''}</b><small>{time(thread.submitted_at)}</small></span><span className={'report-status '+(thread.read?'read':'unread')}>{thread.read?<CheckCircle2 size={14}/>:<Clock3 size={14}/>}<i className="result-dot" />{thread.read?'主管理员已阅':'主管理员未阅'}</span></button>)}</div>:<div className="empty">还没有提交过报告。</div>}</section>
+ </div>;
+}

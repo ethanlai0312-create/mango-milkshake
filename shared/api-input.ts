@@ -42,7 +42,7 @@ const search = optional(text(200));
 const id = {id: uuid};
 const password = requiredText(256);
 const login = {loginId: requiredText(128), password};
-const purposes = enumeration('shared', 'attachment', 'submission', 'avatar', 'conversion');
+const purposes = enumeration('shared', 'attachment', 'submission', 'avatar', 'conversion', 'report');
 const avatar = fields({
  color: optional(value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)),
  expression: optional(enumeration('smile', 'surprise')),
@@ -149,6 +149,12 @@ const actions: Record<string, Fields> = {
  submitTyping: {...id, typed: text(20000)},
  typingHistory: {offset},
  releaseNotes: {},
+ createReport: {level1: text(100), level2: text(100)},
+ submitReport: {...id, level1: text(100), level2: text(100), body: text(20000), attachments: array(uuid, 10)},
+ reportThreads: {},
+ reportInbox: {filter: enumeration('all','unread','read'), offset},
+ reportDetail: id,
+ replyReport: {...id, body: text(20000), attachments: array(uuid, 10)},
  typingScoresUsers: {},
  typingScores: {userId: uuid, offset},
  startRedoAttempt: id, attempt: id,
@@ -166,7 +172,7 @@ const actions: Record<string, Fields> = {
   referenceReleases: optional(questionMap(bool)),
  },
  leaderboard: {version: uuid, offset},
- upload: {purpose: purposes, name: requiredText(255), size: integer(1, Number.MAX_SAFE_INTEGER), mime: requiredText(255), exam_id: optional(nullable(uuid)), attempt_id: optional(nullable(uuid))},
+ upload: {purpose: purposes, name: requiredText(255), size: integer(1, Number.MAX_SAFE_INTEGER), mime: requiredText(255), exam_id: optional(nullable(uuid)), attempt_id: optional(nullable(uuid)), report_id: optional(nullable(uuid))},
  renewUpload: id, verifyUpload: id,
  files: {purpose: optional(purposes), search, category: optional(text(100)), sort: optional(enumeration('name', 'size', 'created_at')), ascending: optional(bool), offset},
  fileUrl: {...id, download: optional(bool)},
