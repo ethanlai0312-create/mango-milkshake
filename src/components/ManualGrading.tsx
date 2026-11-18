@@ -6,7 +6,7 @@ import {Button} from '../ui/Button';
 
 export function ManualGrading({exam,attempt,onSaved}:{exam:Exam;attempt:any;onSaved:(data:any)=>void}){
  const [scores,setScores]=useState<Record<string,number|''>>({}),[comments,setComments]=useState<Record<string,string>>({}),[statuses,setStatuses]=useState<Record<string,GeometryReviewStatus>>({}),[releases,setReleases]=useState<Record<string,boolean>>({}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const questions=exam.questions.filter(q=>['short','drawing','file','formula'].includes(q.kind));
+ const questions=exam.questions.filter(q=>['short','drawing','file','formula','proof'].includes(q.kind));
  const scoreFor=(q:Question)=>scores[q.id]??attempt.grades?.[q.id]?.score??'';
  const statusFor=(q:Question):GeometryReviewStatus=>statuses[q.id]??attempt.grades?.[q.id]?.manualStatus??(attempt.grades?.[q.id]?.status==='pending'?'review':scoreFor(q)===q.points?'correct':scoreFor(q)===0?'wrong':'partial');
  if(!questions.length)return null;

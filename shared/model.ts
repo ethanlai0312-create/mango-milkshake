@@ -1,6 +1,6 @@
 import {validateStructure} from './validation.ts';
 import type {DrawingDocument,DrawingMode} from './geometry/types.ts';
-export const kinds={single:'单选题',multiple:'多选题',boolean:'判断题',blank:'单空填空',blanks:'多空填空',matching:'配对题',ordering:'排序题',short:'简答题',numeric:'数值计算',connection:'连线题',table:'表格填空',hotspot:'图片热点',file:'文件提交',formula:'公式输入',drawing:'几何画图'} as const;
+export const kinds={single:'单选题',multiple:'多选题',boolean:'判断题',blank:'单空填空',blanks:'多空填空',matching:'配对题',ordering:'排序题',short:'简答题',numeric:'数值计算',connection:'连线题',table:'表格填空',hotspot:'图片热点',file:'文件提交',formula:'公式输入',drawing:'几何画图',proof:'证明题'} as const;
 export type Kind=keyof typeof kinds;
 export type Question={id:string;kind:Kind;prompt:string;points:number;options:string[];answer:any;explanation:string;traditionalOnly:boolean;ignoreCase:boolean;ignorePunctuation:boolean;partial:boolean;shuffle:boolean;attachments:string[];tolerance:number;blankPoints:number[];drawing?:{mode:DrawingMode;initial?:DrawingDocument}};
 export type Exam={id:string;owner_id?:string;author?:string;title:string;description:string;subject:string;tags:string[];status:string;revision:number;questions:Question[];time_limit:number;repeat_allowed:boolean;reveal_answers:boolean;show_explanations:boolean;published_version_id?:string;review_reason?:string;updated_at?:string;deleted_at?:string};

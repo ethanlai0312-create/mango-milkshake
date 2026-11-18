@@ -39,6 +39,7 @@ export function validateQuestion(value:unknown,publish=false):string[]{
  case 'ordering':case 'matching':case 'connection':if(!Array.isArray(q.answer)||q.answer.length!==count||q.answer.some(v=>!index(v,count))||new Set(q.answer).size!==count)errors.push('顺序或配对答案必须完整且不重复');break;
  case 'numeric':{const s=String(q.answer??'').trim(),parts=s.split('/');const n=parts.length===2?Number(parts[0])/Number(parts[1]):Number(s);if(!s||parts.length>2||!Number.isFinite(n))errors.push('数值答案无效');break;}
  case 'hotspot':if(!q.answer||!finite(q.answer.x,0,100)||!finite(q.answer.y,0,100)||!finite(q.answer.radius,.1,100))errors.push('请设置有效热点中心和半径');if(!q.options[0]||!/^https:\/\//i.test(q.options[0])&&!q.attachments.some(id=>q.options[0]==='图片['+id+']'))errors.push('热点题需要HTTPS图片网址或已上传的图片附件');break;
+ case 'proof':if(typeof q.answer!=='string'||q.answer.length>50000)errors.push('参考证明必须是文本且不超过50000字');break;
  }
  return errors;
 }

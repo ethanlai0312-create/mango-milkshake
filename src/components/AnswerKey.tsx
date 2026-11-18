@@ -4,6 +4,7 @@ import {QuestionImage} from './QuestionImage';
 import type {Question} from '../../shared/model';
 import {Sortable} from './Sortable';
 import {Drawing} from './Drawing';
+import {ProofInput} from './ProofInput';
 export function AnswerKey({q,onChange}:{q:Question;onChange:(p:Partial<Question>)=>void}){
  const [referenceOpen,setReferenceOpen]=useState(false),referenceId=useId();
  if(q.kind==='drawing')return <div className="geometry-reference-editor">
@@ -11,6 +12,7 @@ export function AnswerKey({q,onChange}:{q:Question;onChange:(p:Partial<Question>
   <p className="muted geometry-editor-hint">参考答案默认保密，管理员可在批改后公开。</p>
   <div id={referenceId} hidden={!referenceOpen}><Drawing key={q.id+':reference:'+JSON.stringify({mode:q.drawing?.mode,objects:q.drawing?.initial?.objects})} value={q.answer||undefined} mode={q.drawing?.mode??'free'} initial={q.drawing?.initial} onChange={answer=>onChange({answer})}/></div>
  </div>;
+ if(q.kind==='proof')return <div><ProofInput label="参考证明或评分要点（可选）" value={typeof q.answer==='string'?q.answer:''} onChange={answer=>onChange({answer})}/><small>答题者提交后，批改页和答案页会显示这段参考证明。</small></div>;
  if(q.kind==='single')return <select aria-label="正确答案" value={q.answer} onChange={e=>onChange({answer:e.target.value===''?'':+e.target.value})}><option value="">选择正确选项</option>{q.options.map((o,i)=><option key={i} value={i}>{String.fromCharCode(65+i)}. {o}</option>)}</select>;
  if(q.kind==='multiple')return <>{q.options.map((o,i)=><label className="check" key={i}><input type="checkbox" checked={(Array.isArray(q.answer)?q.answer:[]).includes(i)} onChange={e=>onChange({answer:e.target.checked?[...q.answer,i]:q.answer.filter((n:number)=>n!==i)})}/>{o}</label>)}</>;
  if(q.kind==='boolean')return <select value={q.answer} onChange={e=>onChange({answer:e.target.value})}><option value="true">正确</option><option value="false">错误</option></select>;

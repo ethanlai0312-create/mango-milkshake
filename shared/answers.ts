@@ -12,7 +12,7 @@ export function validateAnswers(questions:Question[],answers:unknown,context?:Co
   else if(q.kind==='multiple'||q.kind==='ordering')valid=Array.isArray(a)&&a.length<=q.options.length&&a.every(index)&&new Set(a).size===a.length;
   else if(q.kind==='matching'||q.kind==='connection')valid=Array.isArray(a)&&a.length<=q.options.length&&a.every(v=>v===null||v===''||index(v));
   else if(q.kind==='boolean')valid=['true','false'].includes(a);
-  else if(['blank','short','formula','numeric'].includes(q.kind))valid=(typeof a==='string'&&a.length<=50000)||(q.kind==='numeric'&&typeof a==='number'&&Number.isFinite(a));
+  else if(['blank','short','formula','numeric','proof'].includes(q.kind))valid=(typeof a==='string'&&a.length<=50000)||(q.kind==='numeric'&&typeof a==='number'&&Number.isFinite(a));
   else if(['blanks','table'].includes(q.kind))valid=Array.isArray(a)&&a.length<=q.options.length&&a.every(v=>v===null||typeof v==='string'&&v.length<=10000);
   else if(q.kind==='file')valid=typeof a==='string'&&uuid.test(a);
   else if(q.kind==='hotspot')valid=typeof a==='object'&&[a.x,a.y].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=100);
