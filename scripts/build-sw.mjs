@@ -19,7 +19,7 @@ self.addEventListener('fetch',event=>{const request=event.request,url=new URL(re
  if(request.mode==='navigate'){
   if(url.pathname!==HOME.pathname&&url.pathname!==INDEX.pathname)return;
   const cached=async()=>{const cache=await caches.open(CACHE),html=await cache.match(INDEX.href,{ignoreVary:true});if(!html)throw new Error('Offline shell unavailable');return new Response(await html.arrayBuffer(),{status:html.status,statusText:html.statusText,headers:html.headers});};
-  event.respondWith(fetch(request).catch(cached));return;
+  event.respondWith(fetch(request).then(async response=>{if(response.status<500)return response;try{return await cached();}catch{return response;}}).catch(cached));return;
  }
  if(FILES.has(url.href))event.respondWith(caches.open(CACHE).then(async cache=>(await cache.match(request,{ignoreVary:true}))??fetch(request)));
 });`);

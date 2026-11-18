@@ -15,7 +15,7 @@ afterAll(async () => {
     if (folder && dirname(resolve(folder)) === resolve(tmpdir()) && basename(folder).startsWith('mango-sw-test-'))
         await rm(folder, { recursive: true, force: true });
 });
-function worker(fails = false) {
+function worker(fails = false, status = 200) {
     const listeners = new Map();
     let fetches = 0, cached = 0;
     runInNewContext(source, {
@@ -23,7 +23,7 @@ function worker(fails = false) {
         self: { registration: { scope: 'https://fixture.invalid/' }, location: { origin: 'https://fixture.invalid' }, navigator: { onLine: false }, addEventListener: (kind, handler) => listeners.set(kind, handler) },
         caches: { open: async () => ({ match: async () => { cached++; return new Response('cached', { headers: { 'content-security-policy': "default-src 'none'" } }); } }) },
         fetch: async () => { fetches++; if (fails)
-            throw new TypeError('Synthetic transport failure'); return new Response('network'); },
+            throw new TypeError('Synthetic transport failure'); return new Response('network', { status }); },
     });
     return { navigate: async () => {
             let response;
@@ -35,6 +35,12 @@ it('tries actual navigation despite a false OS offline hint', async () => {
     const fixture = worker();
     expect(await (await fixture.navigate()).text()).toBe('network');
     expect(fixture.stats()).toEqual({ fetches: 1, cached: 0 });
+});
+it('falls back on an upstream 5xx and preserves cached browser policy', async () => {
+    const fixture = worker(false, 502), response = await fixture.navigate();
+    expect(await response.text()).toBe('cached');
+    expect(response.headers.get('content-security-policy')).toBe("default-src 'none'");
+    expect(fixture.stats()).toEqual({ fetches: 1, cached: 1 });
 });
 it('falls back after actual transport failure and preserves cached browser policy', async () => {
     const fixture = worker(true), response = await fixture.navigate();
