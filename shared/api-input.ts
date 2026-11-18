@@ -106,11 +106,11 @@ const exam = fields({
 const actions: Record<string, Fields> = {
  health: {}, mistakeExams: {}, mistakes: {exam:uuid,mode:optional(enumeration('wrong','partial','all')),offset},
  login,
- register: {password, nickname: requiredText(128), invite: requiredText(256)},
- bootstrap: {...login, nickname: optional(requiredText(128)), token: requiredText(512)},
+ register: {password, nickname: requiredText(512), invite: requiredText(256)},
+ bootstrap: {...login, nickname: optional(requiredText(512)), token: requiredText(512)},
  ackLoginIdNotice: {}, sessionStatus: {}, sessionActivity: {}, me: {},
  settings: {
-  nickname: optional(requiredText(128)),
+  nickname: optional(requiredText(512)),
   settings: fields({theme: optional(enumeration('light', 'dark', 'system')), language: optional(enumeration('zh-CN', 'zh-TW'))}),
   // Kept for compatibility with saved editor/app builds. The settings action reads the existing avatar server-side.
   avatar: optional(avatar), avatar_path: optional(nullable(uuid)),
@@ -129,7 +129,7 @@ const actions: Record<string, Fields> = {
  userState: {...id, active: bool},
  setUserRole: {...id, role: enumeration('user','tester','secondary admin'), expectedRole: enumeration('user','tester','secondary admin')},
  setRealName: {...id, realName: text(8)},
- setNickname: {...id, nickname: requiredText(128)},
+ setNickname: {...id, nickname: requiredText(512)},
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,

@@ -10,9 +10,13 @@ describe('login identity and public nickname',()=>{
   for(const value of ['abc',' a ','a'.repeat(65),'甲乙丙丁','ＡＢＣＤ','a-bc','a_bc','abc\td','ab\ncd','abc🙂',null,{},3])expect(loginIdError(value)).toBeTruthy();
  });
  it('keeps public nicknames case-sensitive and supports Chinese, spaces, punctuation and Unicode',()=>{
-  for(const value of ['同名','Alice','a','昵称 ! 🙂','🙂'.repeat(32)])expect(nicknameError(value)).toBeNull();
+  for(const value of ['同名','Alice','a','昵称 ! 🙂','🙂'.repeat(32),'مرحبا','こんにちは','★彡','A★🙂','👨‍👩‍👧‍👦','🏳️‍🌈','🇭🇰','1️⃣','🏴󠁧󠁢󠁳󠁣󠁴󠁿'])expect(nicknameError(value)).toBeNull();
   expect(nickname('  My Name  ')).toBe('My Name');
-  for(const value of ['', '  ','🙂'.repeat(33),'a\nb','ab\u200bcd',null,{}])expect(nicknameError(value)).toBeTruthy();
+  for(const value of ['', '  ','🙂'.repeat(33),'a\nb','ab\u200bcd','a\u202eb','\u202eabc',null,{}])expect(nicknameError(value)).toBeTruthy();
+ });
+ it('accepts emoji and foreign names in the admin nickname API payload',()=>{
+  expect(validateApiInput({action:'setNickname',id:'5c4f8f8d-3f3b-4d5d-9f8f-2d6f6f0f0f0f',nickname:'👨‍👩‍👧‍👦 مرحبا ★彡'})).toHaveProperty('action','setNickname');
+  expect(validateApiInput({action:'setNickname',id:'5c4f8f8d-3f3b-4d5d-9f8f-2d6f6f0f0f0f',nickname:'a\u202eb'})).toHaveProperty('action','setNickname');
  });
  it('has no legacy nickname login alias and cannot receive a settings ID mutation',()=>{
   expect(validateApiInput({action:'login',loginId:'AbCd',password:'unchanged'})).toHaveProperty('action','login');
