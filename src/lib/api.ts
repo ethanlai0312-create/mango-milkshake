@@ -14,7 +14,7 @@ export const supabase=cookieAuth?createCookieAuthClient(supabaseUrl,import.meta.
 let sessionRequest:ReturnType<typeof supabase.auth.getSession>|undefined;
 export function readSession(){if(!sessionRequest)sessionRequest=deadline(supabase.auth.getSession().then(result=>{if(result.error)throw result.error;return result;}),12000,'登录状态检查超时，请重试；现有登录信息已保留。').finally(()=>{sessionRequest=undefined;});return sessionRequest;}
 export let serverOffset=0;
-const mutations=new Set(['ackLoginIdNotice','setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','startRedoAttempt','pauseAttempt','resumeAttempt','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
+const mutations=new Set(['ackLoginIdNotice','setUserRole','updateAvatar','purgeAccount','login','register','bootstrap','settings','changePassword','userState','resetPassword','createInvite','revokeInvite','createExam','saveExam','submitReview','review','deleteExam','purgeExam','copyExam','startAttempt','startRedoAttempt','pauseAttempt','resumeAttempt','startTyping','submitTyping','saveAttempt','submitAttempt','grade','upload','renewUpload','verifyUpload','updateFile','replaceShared','deleteFile','createConversion','deleteConversion','cancelConversion','saveConfig']);
 const inFlight=new Map<string,Promise<any>>();
 const anonymousActions=new Set(['login','register','bootstrap','maintenance']);
 const downloadActions=new Set(['fileUrl','conversionDownload']);

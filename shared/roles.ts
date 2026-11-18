@@ -2,15 +2,15 @@
 export const isTesterRole=(role:string)=>role==='tester';
 export const isBusinessManager=(role:string)=>role==='admin'||role==='secondary_admin';
 export const canDeleteContent=(role:string)=>['admin','tester','visitor'].includes(role);
-export const canVisitManagement=(role:string,page:string)=>role==='admin'||role==='tester'||role==='secondary_admin'&&['review','grading','users','invites','logs','config'].includes(page);
+export const canVisitManagement=(role:string,page:string)=>page==='typingScores'?(role==='admin'||role==='secondary_admin'):(role==='admin'||role==='tester'||role==='secondary_admin'&&['review','grading','users','invites','logs','config'].includes(page));
 export const roleDisplayLabel=(role:string)=>role==='admin'?'主管理员':role==='secondary_admin'?'副管理员':role==='tester'?'测试员':'普通用户';
 export const roleLabel=(role:string)=>role==='admin'?'primary admin':role==='secondary_admin'?'secondary admin':role==='tester'?'tester':'user';
 export const testerPreviewPages=new Set(['review','users','invites','grading','trash','logs','config']);
-const testerActions=new Set(['ackLoginIdNotice','mistakeExams','mistakes','me','sessionStatus','sessionActivity','presence','changePassword','settings','updateAvatar','exams','testerExam','files','testerFile','getExam','createExam','saveExam','submitReview','deleteExam','copyExam','startAttempt','startRedoAttempt','pauseAttempt','resumeAttempt','attempt','saveAttempt','submitAttempt','history','historyQuery','leaderboard','upload','renewUpload','verifyUpload','deleteFile','conversionInfo','conversionInputs','wakeConverter','conversions','createConversion','deleteConversion','cancelConversion','conversionDownload']);
+const testerActions=new Set(['ackLoginIdNotice','mistakeExams','mistakes','me','sessionStatus','sessionActivity','presence','changePassword','settings','updateAvatar','exams','testerExam','files','testerFile','getExam','createExam','saveExam','submitReview','deleteExam','copyExam','startAttempt','startRedoAttempt','pauseAttempt','resumeAttempt','attempt','saveAttempt','submitAttempt','startTyping','typingAttempt','submitTyping','typingHistory','history','historyQuery','leaderboard','upload','renewUpload','verifyUpload','deleteFile','conversionInfo','conversionInputs','wakeConverter','conversions','createConversion','deleteConversion','cancelConversion','conversionDownload']);
 export function roleAllows(role:string,action:string,params:Record<string,unknown>={}){
  if(!['admin','visitor','tester','secondary_admin'].includes(role))return false;
  if(role==='secondary_admin'){
-  if(!testerActions.has(action)&&!['grade','updateFile','review','fileUrl','users','userPresence','invites','createInvite','revokeInvite','logs','config'].includes(action))return false;
+  if(!testerActions.has(action)&&!['grade','updateFile','review','fileUrl','users','userPresence','invites','createInvite','revokeInvite','logs','config','typingScoresUsers','typingScores'].includes(action))return false;
   if(['deleteExam','deleteFile','deleteConversion','cancelConversion','testerExam','testerFile'].includes(action))return false;
   if(action==='exams'&&params.mode==='trash')return false;
   if(action==='review'&&!['publish','return'].includes(String(params.decision)))return false;
