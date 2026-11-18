@@ -2,7 +2,7 @@ import {useEffect,useSyncExternalStore} from 'react';
 import {pageModules} from '../lib/page-preload';
 import {DocumentFrame} from './DocumentFrame';
 
-export function DocumentPage({kind,...props}:{kind:'editor'|'attempt';id:string;user:any;authSession?:string;initialData?:any;onClose:()=>void}){
+export function DocumentPage({kind,...props}:{kind:'editor'|'attempt';id:string;user:any;authSession?:string;initialData?:any;onClose:()=>void;onRedo?:(id:string)=>void}){
  const resource=pageModules[kind],snapshot=useSyncExternalStore(resource.subscribe,resource.getSnapshot);
  useEffect(()=>{void resource.load().catch(()=>{});},[resource]);
  if(snapshot.value){const Page=snapshot.value;return <Page {...props}/>;}
