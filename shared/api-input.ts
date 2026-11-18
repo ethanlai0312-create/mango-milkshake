@@ -128,6 +128,7 @@ const actions: Record<string, Fields> = {
  purgeAccount: {...id, confirmPermanent: bool, confirmUsername: requiredText(128)},
  userState: {...id, active: bool},
  setUserRole: {...id, role: enumeration('user','tester','secondary admin'), expectedRole: enumeration('user','tester','secondary admin')},
+ setRealName: {...id, realName: text(8)},
  testerExam: id, testerFile: id,
  resetPassword: id,
  invites: legacyAdminFilters,
