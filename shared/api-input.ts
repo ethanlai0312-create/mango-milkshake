@@ -145,6 +145,8 @@ const actions: Record<string, Fields> = {
  purgeExam: {...id, confirmPermanent: bool, confirmTitle: requiredText(200)},
  copyExam: id, startAttempt: id,
  startRedoAttempt: id, attempt: id,
+ pauseAttempt: {...id, revision, answers: questionMap(() => true)},
+ resumeAttempt: id,
  saveAttempt: {...id, revision, answers: questionMap(() => true)},
  submitAttempt: {...id, revision, answers: questionMap(() => true)},
  historyQuery: {all: optional(bool), version: optional(nullable(uuid)), sort: optional(enumeration('date', 'score', 'duration')), offset},
