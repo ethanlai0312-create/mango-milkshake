@@ -109,7 +109,7 @@ export function Typing({user}:{user:{id:string;role:string}}){
   </section>
   <section className="card typing-work">
    <div className="typing-meta"><span>{modeLabel(mode)}</span><span>{minutes} 分钟</span><span>{rootType==='cangjie'?'仓颉':'速成'}字根</span>{attempt&&<span>本次：{typed.length}/{TYPING_MAX_CHARS} 字</span>}</div>
-   {phase==='idle'&&!attempt?<div className="typing-empty"><Keyboard size={42}/><h2>点击“开始”直接出题</h2><p>不需要先载入题目，也不需要填学号姓名。</p><p className="muted">测验模式不显示字根；检验模式显示下一字字根。</p></div>:<>
+   {phase==='idle'&&!attempt?<div className="typing-empty"><Keyboard size={42}/><h2>请点击开始</h2><p>测验模式不显示字根；检验模式显示字根。</p></div>:<>
     <div className="typing-source" aria-label="题目文字">{targetChars.map((ch,i)=><span key={i} className={i<typedChars.length?(typedChars[i]===ch?'typing-char correct':'typing-char wrong'):i===typedChars.length?'typing-char current':'typing-char'}>{ch}</span>)}</div>
     <textarea className="typing-input" value={typed} disabled={phase!=='playing'} autoFocus placeholder={phase==='playing'?'在此输入…':phase==='finished'?'已提交':'点击开始后在这里输入'} onChange={e=>setTyped(e.target.value)} onPaste={block} onDrop={block} onCopy={block} onCut={block} onContextMenu={block} onKeyDown={e=>{if(e.ctrlKey||e.metaKey){if(['c','v','x'].includes(e.key.toLowerCase()))e.preventDefault();}}} spellCheck={false} autoComplete="off"/>
     <div className="typing-progress"><i style={{width:progress+'%'}}/></div>
