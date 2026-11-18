@@ -33,3 +33,5 @@ html[data-session-suspended] .app-shell{visibility:hidden}
 /* PageSurface is the direct child of the login panel and owns its content width. */
 .auth-form>.page-surface{width:100%;max-width:380px;margin-inline:auto}
 .settings-page>.settings-security{margin-bottom:24px}
+
+.impersonation-banner{position:sticky;top:0;z-index:calc(var(--z-header) + 1);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px clamp(24px,3vw,96px);background:#fff4d6;color:#4a3200;border-bottom:1px solid #f0c96a}.app-shell:has(>.impersonation-banner) .workspace>header{position:static}.impersonation-banner>span{min-width:0;line-height:1.5;overflow-wrap:anywhere}.impersonation-banner .ui-button{flex-shrink:0}.quick-grid>.quick-card+.quick-card{margin-top:0}@media(max-width:800px){.impersonation-banner{padding:10px 16px;gap:8px;font-size:var(--text-xs)}}
