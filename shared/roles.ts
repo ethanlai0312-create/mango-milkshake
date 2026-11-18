@@ -2,7 +2,7 @@
 export const isTesterRole=(role:string)=>role==='tester';
 export const isBusinessManager=(role:string)=>role==='admin'||role==='secondary_admin';
 export const canDeleteContent=(role:string)=>['admin','tester','visitor'].includes(role);
-export const canVisitManagement=(role:string,page:string)=>page==='typingScores'?(role==='admin'||role==='secondary_admin'):page==='reportInbox'?role==='admin':page==='reports'?(role==='tester'||role==='secondary_admin'):(role==='admin'||role==='tester'||role==='secondary_admin'&&['review','grading','users','invites','logs','config'].includes(page));
+export const canVisitManagement=(role:string,page:string)=>page==='reportInbox'?role==='admin':page==='reports'?(role==='tester'||role==='secondary_admin'):(role==='admin'||role==='tester'||role==='secondary_admin'&&['review','grading','users','invites','logs','config'].includes(page));
 export const roleDisplayLabel=(role:string)=>role==='admin'?'主管理员':role==='secondary_admin'?'副管理员':role==='tester'?'测试员':'普通用户';
 export const roleLabel=(role:string)=>role==='admin'?'primary admin':role==='secondary_admin'?'secondary admin':role==='tester'?'tester':'user';
 export const testerPreviewPages=new Set(['review','users','invites','grading','trash','logs','config']);

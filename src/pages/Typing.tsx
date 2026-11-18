@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {Keyboard, TimerReset, Trophy, WifiOff} from 'lucide-react';
 import {Button} from '../ui/Button';
+import {TypingScores} from './TypingScores';
 import {api,serverNow} from '../lib/api';
 import {calculateTypingScore,normalizeTypedText,quickCode,TYPING_MAX_CHARS,TYPING_TIME_OPTIONS,type RootType,type TypingMode} from '../../shared/typing';
 import rootMap from '../data/typing-cangjie.json';
@@ -117,5 +118,6 @@ export function Typing({user}:{user:{id:string;role:string}}){
    </>}
   </section>
   <section className="card typing-history"><div className="typing-history-head"><h2><Trophy size={18}/> 我的打字历史</h2><span className="muted">永久保存</span></div>{history.length?<div className="typing-table-wrap"><table className="typing-table"><thead><tr><th>提交时间</th><th>模式</th><th>计时</th><th>成绩</th><th>错误</th><th>速度</th><th>正确率</th></tr></thead><tbody>{history.map(row=><tr key={row.id}><td data-label="提交时间">{historyTime(row.submitted_at)}</td><td data-label="模式">{modeLabel(row.mode)}</td><td data-label="计时">{Math.round(Number(row.time_limit_seconds)/60)} 分钟</td><td data-label="成绩"><b>{row.correct}</b></td><td data-label="错误">{row.wrong}</td><td data-label="速度">{Number(row.cpm).toFixed(2)}</td><td data-label="正确率">{Number(row.accuracy).toFixed(1)}%</td></tr>)}</tbody></table></div>:<div className="empty">还没有打字记录，开始一次测验吧。</div>}</section>
+  {(user.role==='admin'||user.role==='secondary_admin')&&<TypingScores embedded/>}
  </div>;
 }
