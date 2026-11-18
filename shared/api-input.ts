@@ -148,6 +148,7 @@ const actions: Record<string, Fields> = {
  typingAttempt: id,
  submitTyping: {...id, typed: text(20000)},
  typingHistory: {offset},
+ releaseNotes: {},
  typingScoresUsers: {},
  typingScores: {userId: uuid, offset},
  startRedoAttempt: id, attempt: id,
