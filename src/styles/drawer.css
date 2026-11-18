@@ -32,3 +32,20 @@
 .proof-input{display:flex;flex-direction:column;gap:8px}.proof-symbols{display:flex;flex-wrap:wrap;gap:6px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--surface-alt)}.proof-symbol{min-width:44px;min-height:44px;padding:0 8px;font-size:20px;line-height:1;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer;font-family:"Segoe UI Symbol","Cambria Math",system-ui,sans-serif}.proof-symbol:hover{background:var(--surface-hover)}.proof-symbol:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.proof-text{min-height:180px;width:100%;resize:vertical;line-height:1.8;font-family:inherit}.proof-reference{white-space:pre-wrap;line-height:1.8;overflow-wrap:anywhere}@media(max-width:600px){.proof-symbol{min-width:42px;min-height:42px;font-size:19px}}
 
 .account-real-name{font-weight:400;color:var(--ink-secondary);white-space:normal}
+
+/* Admin user rows: keep primary actions visible, group the rest. */
+.user-records .actions{flex-wrap:wrap;align-items:flex-start;gap:8px}
+.user-records .role-select{flex:0 0 auto}
+.user-records .user-more{display:block;width:100%;margin-top:2px}
+.user-records .user-more>summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink-secondary);font-size:var(--text-sm);cursor:pointer;user-select:none}
+.user-records .user-more>summary::-webkit-details-marker{display:none}
+.user-records .user-more>summary::before{content:"⋯";margin-right:7px;font-size:18px;line-height:1;color:var(--blue)}
+.user-records .user-more[open]>summary{color:var(--blue);border-color:var(--blue);background:var(--blue-tint)}
+.user-records .user-more-panel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-alt)}
+.user-records .user-more-label{grid-column:1/-1;color:var(--ink-secondary);font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;padding-top:2px}
+.user-records .user-more-label:first-child{padding-top:0}
+.user-records .user-more-label.danger-label{color:var(--red);margin-top:4px;border-top:1px solid var(--line);padding-top:10px}
+.user-records .user-more-panel button{width:100%;min-height:38px;padding:7px 10px;font-size:var(--text-sm);white-space:nowrap}
+.user-records .user-more-panel .danger{border-color:color-mix(in srgb,var(--red) 45%,var(--line));color:var(--red);background:var(--red-tint)}
+@media(max-width:900px){.user-records .user-more-panel{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.user-records .user-more-panel{grid-template-columns:1fr}.user-records .user-more>summary{width:100%}}
