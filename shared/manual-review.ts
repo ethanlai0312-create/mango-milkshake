@@ -4,7 +4,7 @@ export const geometryReviewLabels={correct:'正确',wrong:'错误',partial:'部�
 export type GeometryReviewStatus=keyof typeof geometryReviewLabels;
 export type QuestionGrade={score:number|null;status:'final'|'pending';manualStatus?:GeometryReviewStatus;referenceReleased?:boolean};
 export type ManualReviewInput={scores?:unknown;comments?:unknown;manualStatus?:unknown;referenceReleases?:unknown};
-const manualKinds=['short','drawing','file','formula'];
+const manualKinds=['short','drawing','file','formula','proof'];
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 
 /** All decisions are applied to the attempt's immutable version; no diagram is graded by step equality. */

@@ -8,7 +8,7 @@ export function normalizeText(v:unknown,q:Pick<Question,'traditionalOnly'|'ignor
 export function textEqual(input:unknown,accepted:unknown[],q:Question){return accepted.some(a=>normalizeText(input,q)===normalizeText(a,q,true));}
 export function numberValue(input:unknown){const s=String(input).trim();if(/^[-+]?\d+(?:\.\d+)?\s*\/\s*[-+]?\d+(?:\.\d+)?$/.test(s)){const [a,b]=s.split('/').map(Number);return b? a/b:NaN;}return s!==''?Number(s):NaN;}
 export function gradeQuestion(q:Question,a:any):{score:number|null;status:'final'|'pending'}{
- if(['short','drawing','file','formula'].includes(q.kind))return {score:null,status:'pending'};
+ if(['short','drawing','file','formula','proof'].includes(q.kind))return {score:null,status:'pending'};
  let ratio=0;
  if(['single','boolean'].includes(q.kind))ratio=String(a)===String(q.answer)?1:0;
  if(q.kind==='multiple'){const expected=new Set((q.answer as any[]).map(String)),got=new Set((Array.isArray(a)?a:[]).map(String));const good=[...got].filter(v=>expected.has(v)).length,bad=got.size-good;ratio=q.partial?Math.max(0,(good-bad)/Math.max(1,expected.size)):good===expected.size&&bad===0?1:0;}
